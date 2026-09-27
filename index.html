@@ -2,75 +2,78 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <!-- Configuración clave para que se vea y juegue bien en dispositivos móviles -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Defense Web - Beta</title>
+    <title>Castle Battle</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
 </head>
 <body>
-    <!-- Capa de Interfaz de Usuario -->
-    <div id="ui-layer">
-        <!-- Barra Superior -->
-        <div class="top-bar">
-            <div class="resource">
-                <span class="icon">🪙</span>
-                <span id="coins-display">3922</span>
+    <div id="game-container">
+        <!-- El mundo 2D se dibujará aquí -->
+        <canvas id="gameCanvas"></canvas>
+        
+        <!-- Capa de Interfaz de Usuario -->
+        <div id="ui-layer">
+            
+            <!-- Barra superior: Recursos -->
+            <div id="resource-bar">
+                <div class="resource" title="Madera">🪵 <span id="res-wood">0</span></div>
+                <div class="resource" title="Piedra">🪨 <span id="res-stone">0</span></div>
+                <div class="resource" title="Puntos de Victoria">🏆 <span id="res-points">0</span></div>
             </div>
-            <div class="resource">
-                <span class="icon">💎</span>
-                <span id="gems-display">2414</span>
-            </div>
-        </div>
 
-        <!-- Menú Inferior -->
-        <div class="bottom-menu">
-            <!-- Pestañas -->
-            <div class="tabs">
-                <div class="tab active">Héroe</div>
-                <div class="tab">Nivel</div>
-                <div class="tab">Subir Estrella</div>
-                <div class="tab">Tecnología</div>
+            <!-- Menú inferior: Construcción -->
+            <div id="build-menu">
+                <button class="build-btn" onclick="selectBuilding('wall')">
+                    🧱 Muro<br><small>10🪵 5🪨</small>
+                </button>
+                <button class="build-btn" onclick="selectBuilding('tower')">
+                    🗼 Torre<br><small>20🪵 15🪨</small>
+                </button>
+                <button class="build-btn" onclick="selectBuilding('archer')">
+                    🏹 Arquero<br><small>10🪵 0🪨</small>
+                </button>
+            </div>
+
+            <!-- Controles laterales: Acción y Recolección -->
+            <div id="action-menu">
+                <button id="btn-gather" onclick="gatherResources()">⛏️ Talar/Picar</button>
+                <button id="btn-combat" onclick="openCombat()">⚔️ Buscar Combate</button>
+            </div>
+
+            <!-- Pantalla de Combate 1 vs 1 (Oculta por defecto) -->
+            <div id="combat-overlay" class="hidden">
+                <div class="combat-panel">
+                    <h2>⚔️ Batalla de Castillos ⚔️</h2>
+                    <p>Atacando y defendiendo simultáneamente...</p>
+                    
+                    <div class="health-bars">
+                        <div class="hp-box">
+                            <span>Tu Castillo</span>
+                            <progress id="hp-player" value="100" max="100"></progress>
+                            <span id="hp-player-text">100/100</span>
+                        </div>
+                        <div class="hp-box">
+                            <span>Castillo Enemigo</span>
+                            <progress id="hp-enemy" value="100" max="100"></progress>
+                            <span id="hp-enemy-text">100/100</span>
+                        </div>
+                    </div>
+
+                    <div id="combat-log">¡Prepárate para la batalla!</div>
+                    
+                    <div class="combat-actions">
+                        <button id="btn-attack" onclick="performAttack()">🗡️ Lanzar Ataque</button>
+                        <button id="btn-flee" onclick="fleeCombat()">🏃 Retirada</button>
+                    </div>
+                </div>
             </div>
             
-            <!-- Cartas de Héroes -->
-            <div class="hero-roster">
-                <!-- Ametrallador -->
-                <div class="hero-card" id="card-ametrallador" onclick="interactHero('ametrallador')">
-                    <div class="hero-name">Ametrallador</div>
-                    <div class="hero-image-placeholder" style="background: #e74c3c;"></div>
-                    <div class="hero-status">Nv.50</div>
-                    <button class="action-btn select-btn">Seleccionar</button>
-                </div>
-
-                <!-- Artillería -->
-                <div class="hero-card" id="card-artilleria" onclick="interactHero('artilleria')">
-                    <div class="hero-name">Artillería</div>
-                    <div class="hero-image-placeholder" style="background: #27ae60;"></div>
-                    <div class="hero-status">Nv.5</div>
-                    <button class="action-btn buy-btn">🪙 136.9K</button>
-                </div>
-
-                <!-- Soldado Electro -->
-                <div class="hero-card" id="card-electro" onclick="interactHero('electro')">
-                    <div class="hero-name">Soldado Electro</div>
-                    <div class="hero-image-placeholder" style="background: #3498db;"></div>
-                    <div class="hero-status">Nv.50</div>
-                    <button class="action-btn select-btn">Seleccionar</button>
-                </div>
-
-                <!-- Bombero -->
-                <div class="hero-card locked" id="card-bombero" onclick="interactHero('bombero')">
-                    <div class="hero-name">Bombero</div>
-                    <div class="hero-image-placeholder" style="background: #34495e;">🔒</div>
-                    <div class="hero-status">Bloqueado</div>
-                    <button class="action-btn gem-btn">💎 200</button>
-                </div>
-            </div>
+            <!-- Sistema de Notificaciones flotantes -->
+            <div id="notification-area"></div>
         </div>
     </div>
 
-    <!-- Contenedor del Motor Gráfico -->
-    <div id="game-container"></div>
     <script src="game.js"></script>
 </body>
 </html>
