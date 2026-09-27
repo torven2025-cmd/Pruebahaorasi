@@ -3,31 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle 2.0</title>
+    <title>Castle Battle 3.0</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- Capa de Interfaz -->
         <div id="ui-layer">
-            
             <div id="resource-bar">
-                <div class="resource" title="Madera">🪵 <span id="res-wood">50</span></div>
-                <div class="resource" title="Piedra">🪨 <span id="res-stone">50</span></div>
+                <div class="resource" title="Madera">🪵 <span id="res-wood">150</span></div>
+                <div class="resource" title="Piedra">🪨 <span id="res-stone">150</span></div>
                 <div class="resource" title="Puntos">🏆 <span id="res-points">0</span></div>
             </div>
 
-            <!-- Controles de Cámara (NUEVO) -->
+            <!-- Controles de Cámara -->
             <div id="zoom-controls">
                 <button onclick="changeZoom(0.2)">🔍+</button>
                 <button onclick="changeZoom(-0.2)">🔍-</button>
             </div>
 
+            <!-- Menú de Acciones -->
             <div id="action-menu">
+                <!-- Botón de Modo Toggle -->
+                <button id="btn-toggle-mode" onclick="toggleMode()">✋ Mover Mapa</button>
                 <button id="btn-gather" onclick="gatherResources()">⛏️ Talar/Picar</button>
                 <button id="btn-combat" onclick="openCombat()">⚔️ Buscar Combate</button>
+                <!-- Botón para expandir cuadrícula -->
+                <button id="btn-expand" onclick="expandGrid()">🗺️ Expandir<br><small id="expand-cost">100🪵 100🪨</small></button>
             </div>
 
             <div id="build-menu">
@@ -42,7 +45,6 @@
                 </button>
             </div>
 
-            <!-- Combate (Igual que antes) -->
             <div id="combat-overlay" class="hidden">
                 <div class="combat-panel">
                     <h2>⚔️ Batalla ⚔️</h2>
