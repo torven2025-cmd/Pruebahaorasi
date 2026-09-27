@@ -1,263 +1,237 @@
-// ==========================================
-// ESTADO GLOBAL DEL JUEGO (BETA TEST)
-// ==========================================
-const GameState = {
-    coins: 3922,
-    gems: 2414,
-    selectedHeroToPlace: null,
-    heroesDB: {
-        'ametrallador': { id: 'ametrallador', name: 'Ametrallador', unlocked: true, cost: 0, damage: 10, range: 120, fireRate: 400, color: 0xe74c3c, projColor: 0xffaaaa },
-        'artilleria':   { id: 'artilleria', name: 'Artillería', unlocked: false, cost: 136900, damage: 50, range: 180, fireRate: 1500, color: 0x27ae60, projColor: 0x55ff55 },
-        'electro':      { id: 'electro', name: 'Soldado Electro', unlocked: true, cost: 0, damage: 25, range: 150, fireRate: 800, color: 0x3498db, projColor: 0xaaaaff },
-        'bombero':      { id: 'bombero', name: 'Bombero', unlocked: false, gemCost: 200, damage: 40, range: 100, fireRate: 1000, color: 0xe67e22, projColor: 0xffaa00 }
-    }
+// game.js
+
+// Referencias del DOM
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const uiLog = document.getElementById('notification-area');
+
+// Ajustar tamaño del canvas a la pantalla
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// --- Estado del Juego ---
+let resources = {
+    wood: 50,
+    stone: 50,
+    points: 0
 };
 
-// Referencia global a la escena principal para interactuar desde HTML
-let mainSceneRef = null;
+// Estadísticas de poder
+let power = {
+    attack: 5,   // Ataque base
+    defense: 50, // HP extra del castillo basado en muros
+};
 
-// ==========================================
-// FUNCIONES DE INTERFAZ HTML -> PHASER
-// ==========================================
-function interactHero(heroId) {
-    const heroData = GameState.heroesDB[heroId];
-    
-    if (!heroData.unlocked) {
-        // Lógica de compra
-        if (heroData.cost && GameState.coins >= heroData.cost) {
-            GameState.coins -= heroData.cost;
-            heroData.unlocked = true;
-            actualizarUI();
-            alert(`${heroData.name} desbloqueado.`);
-        } else if (heroData.gemCost && GameState.gems >= heroData.gemCost) {
-            GameState.gems -= heroData.gemCost;
-            heroData.unlocked = true;
-            actualizarUI();
-            document.getElementById(`card-${heroId}`).classList.remove('locked');
-            alert(`${heroData.name} desbloqueado.`);
+// Entidades en el mapa 2D
+let buildings = [];
+let currentSelection = null;
+
+// Costos de construcción
+const buildCosts = {
+    wall: { wood: 10, stone: 5, color: '#808080', size: 30, def: 20, atk: 0 },
+    tower: { wood: 20, stone: 15, color: '#A0522D', size: 40, def: 30, atk: 5 },
+    archer: { wood: 10, stone: 0, color: '#FFD700', size: 20, def: 0, atk: 15 }
+};
+
+// --- Bucle principal 2D ---
+function drawWorld() {
+    // Limpiar fondo (Pasto)
+    ctx.fillStyle = '#557a2b';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Dibujar Castillo Central (Tu base)
+    ctx.fillStyle = '#4a4a4a';
+    let centerX = canvas.width / 2 - 40;
+    let centerY = canvas.height / 2 - 40;
+    ctx.fillRect(centerX, centerY, 80, 80);
+    ctx.fillStyle = 'white';
+    ctx.font = '20px Arial';
+    ctx.fillText("🏰", centerX + 25, centerY + 45);
+
+    // Dibujar construcciones
+    buildings.forEach(b => {
+        ctx.fillStyle = b.color;
+        if(b.type === 'archer') {
+            ctx.beginPath();
+            ctx.arc(b.x, b.y, b.size/2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.fillStyle = 'black';
+            ctx.fillText("🏹", b.x - 10, b.y + 5);
         } else {
-            alert("Fondos insuficientes.");
-        }
-        return;
-    }
-
-    // Seleccionar para colocar
-    GameState.selectedHeroToPlace = heroId;
-    
-    // Efecto visual en la UI
-    document.querySelectorAll('.hero-card').forEach(card => card.classList.remove('selected'));
-    document.getElementById(`card-${heroId}`).classList.add('selected');
-}
-
-function actualizarUI() {
-    document.getElementById('coins-display').innerText = GameState.coins;
-    document.getElementById('gems-display').innerText = GameState.gems;
-    
-    // Actualizar botones según estado
-    ['ametrallador', 'artilleria', 'electro', 'bombero'].forEach(id => {
-        const btn = document.querySelector(`#card-${id} .action-btn`);
-        if (GameState.heroesDB[id].unlocked) {
-            btn.className = 'action-btn select-btn';
-            btn.innerText = 'Seleccionar';
+            ctx.fillRect(b.x - b.size/2, b.y - b.size/2, b.size, b.size);
         }
     });
+
+    requestAnimationFrame(drawWorld);
+}
+drawWorld();
+
+// --- Lógica de Recolección y UI ---
+function updateUI() {
+    document.getElementById('res-wood').innerText = resources.wood;
+    document.getElementById('res-stone').innerText = resources.stone;
+    document.getElementById('res-points').innerText = resources.points;
+}
+updateUI();
+
+function gatherResources() {
+    // Simula talar/picar obteniendo cantidades aleatorias
+    let gainedWood = Math.floor(Math.random() * 5) + 2;
+    let gainedStone = Math.floor(Math.random() * 3) + 1;
+    
+    resources.wood += gainedWood;
+    resources.stone += gainedStone;
+    
+    showNotification(`+${gainedWood}🪵 +${gainedStone}🪨`);
+    updateUI();
 }
 
-// ==========================================
-// CLASES DEL JUEGO
-// ==========================================
-class HeroEntity extends Phaser.GameObjects.Container {
-    constructor(scene, x, y, heroData) {
-        super(scene, x, y);
-        this.scene = scene;
-        this.stats = heroData;
-
-        // SPRITE TEMPORAL (Base + Personaje)
-        let baseObj = scene.add.rectangle(0, 0, 60, 60, 0xbdc3c7).setStrokeStyle(4, 0x7f8c8d);
-        let charObj = scene.add.circle(0, -10, 20, heroData.color);
-        
-        this.add([baseObj, charObj]);
-        scene.add.existing(this);
-
-        this.lastFired = 0;
-    }
-
-    update(time, enemies) {
-        let target = this.getClosestEnemy(enemies);
-        if (target && time > this.lastFired) {
-            this.shoot(target);
-            this.lastFired = time + this.stats.fireRate;
-        }
-    }
-
-    getClosestEnemy(enemies) {
-        let closest = null;
-        let minDistance = this.stats.range;
-        enemies.getChildren().forEach(enemy => {
-            if (enemy.active) {
-                let dist = Phaser.Math.Distance.Between(this.x, this.y, enemy.x, enemy.y);
-                if (dist < minDistance) {
-                    minDistance = dist;
-                    closest = enemy;
-                }
-            }
-        });
-        return closest;
-    }
-
-    shoot(target) {
-        // Proyectil
-        let bullet = this.scene.add.circle(this.x, this.y - 10, 6, this.stats.projColor);
-        this.scene.physics.add.existing(bullet);
-        this.scene.physics.moveToObject(bullet, target, 500);
-
-        // Destruir proyectil y aplicar daño al llegar
-        this.scene.time.delayedCall(150, () => {
-            if (bullet) bullet.destroy();
-            if (target && target.active) target.takeDamage(this.stats.damage);
-        });
-    }
+function showNotification(msg) {
+    uiLog.innerText = msg;
+    setTimeout(() => uiLog.innerText = "", 2000);
 }
 
-class EnemyEntity extends Phaser.GameObjects.Container {
-    constructor(scene, x, y) {
-        super(scene, x, y);
-        this.scene = scene;
-        
-        // SPRITE TEMPORAL (Zombie)
-        let bodyObj = scene.add.rectangle(0, 0, 30, 40, 0x8e44ad);
-        this.add(bodyObj);
-        
-        scene.add.existing(this);
-        scene.physics.add.existing(this);
-        
-        this.hp = 100;
-        this.speed = Phaser.Math.Between(30, 60);
-    }
+// --- Lógica de Construcción ---
+function selectBuilding(type) {
+    currentSelection = type;
+    
+    // Feedback visual en botones
+    document.querySelectorAll('.build-btn').forEach(btn => btn.classList.remove('selected'));
+    event.currentTarget.classList.add('selected');
+    showNotification(`Modo construcción: Toque en el mapa para colocar.`);
+}
 
-    takeDamage(amount) {
-        this.hp -= amount;
-        
-        // Efecto visual de daño
-        let dmgText = this.scene.add.text(this.x, this.y - 20, `-${amount}`, { fontSize: '14px', fill: '#ff0000', fontStyle: 'bold' });
-        this.scene.tweens.add({ targets: dmgText, y: this.y - 40, alpha: 0, duration: 500, onComplete: () => dmgText.destroy() });
+// Colocar construcción al tocar el canvas
+canvas.addEventListener('mousedown', (e) => handlePlacement(e.clientX, e.clientY));
+canvas.addEventListener('touchstart', (e) => handlePlacement(e.touches[0].clientX, e.touches[0].clientY));
 
-        if (this.hp <= 0) {
-            GameState.coins += 15;
-            actualizarUI();
-            this.destroy();
-        }
+function handlePlacement(x, y) {
+    if (!currentSelection) return;
+
+    let cost = buildCosts[currentSelection];
+    if (resources.wood >= cost.wood && resources.stone >= cost.stone) {
+        // Restar recursos
+        resources.wood -= cost.wood;
+        resources.stone -= cost.stone;
+        
+        // Sumar estadísticas a tu poder de combate
+        power.attack += cost.atk;
+        power.defense += cost.def;
+
+        // Añadir al mundo
+        buildings.push({
+            x: x,
+            y: y,
+            type: currentSelection,
+            color: cost.color,
+            size: cost.size
+        });
+
+        currentSelection = null;
+        document.querySelectorAll('.build-btn').forEach(btn => btn.classList.remove('selected'));
+        updateUI();
+        showNotification("¡Construcción completada!");
+    } else {
+        showNotification("No tienes suficientes recursos.");
     }
 }
 
-// ==========================================
-// ESCENA PRINCIPAL
-// ==========================================
-class MainGame extends Phaser.Scene {
-    constructor() {
-        super('MainGame');
-        mainSceneRef = this;
-    }
+// --- Lógica de Combate 1C1 ---
+let combatState = { active: false, playerHp: 100, enemyHp: 100 };
 
-    create() {
-        // Fondo (Pasto)
-        this.add.rectangle(0, 0, this.scale.width * 2, this.scale.height * 2, 0x8cc460);
+function openCombat() {
+    document.getElementById('combat-overlay').classList.remove('hidden');
+    
+    // La HP del jugador escala con sus defensas (muros/torres)
+    let maxPlayerHp = 100 + power.defense;
+    // Generar un enemigo basado en tus puntos actuales para que sea equilibrado
+    let maxEnemyHp = 80 + (resources.points * 5) + Math.floor(Math.random() * 50);
+    
+    combatState = {
+        active: true,
+        playerHp: maxPlayerHp,
+        enemyHp: maxEnemyHp,
+        maxPlayerHp: maxPlayerHp,
+        maxEnemyHp: maxEnemyHp
+    };
+    
+    updateCombatUI();
+    logCombat("¡Combate encontrado! Prepara tus tropas.");
+}
 
-        this.heroes = [];
-        this.enemies = this.physics.add.group({ classType: EnemyEntity, runChildUpdate: true });
+function performAttack() {
+    if (!combatState.active) return;
 
-        this.createGrid();
+    // Tu ataque (Daño base + daño por arqueros/torres + factor aleatorio)
+    let myDamage = power.attack + Math.floor(Math.random() * 10);
+    // Ataque del enemigo (Escala con tus puntos)
+    let enemyBaseAtk = 5 + (resources.points * 2);
+    let enemyDamage = enemyBaseAtk + Math.floor(Math.random() * 10);
 
-        // Generador de Enemigos
-        this.time.addEvent({
-            delay: 2000,
-            callback: this.spawnEnemy,
-            callbackScope: this,
-            loop: true
-        });
+    // Ambos reciben daño simultáneamente (Estilo choque)
+    combatState.enemyHp -= myDamage;
+    combatState.playerHp -= enemyDamage;
 
-        actualizarUI();
-    }
+    logCombat(`Causaste ${myDamage} de daño. El enemigo te devolvió ${enemyDamage} de daño.`);
 
-    createGrid() {
-        const startX = this.cameras.main.centerX - 75;
-        const startY = this.cameras.main.centerY - 150;
-        const tileSize = 75;
+    checkCombatEnd();
+    updateCombatUI();
+}
 
-        // Matriz 3x3 isométrica/diamante simplificada
-        for (let row = 0; row < 3; row++) {
-            for (let col = 0; col < 3; col++) {
-                let cx = startX + (col * tileSize);
-                let cy = startY + (row * tileSize);
-                
-                let tile = this.add.rectangle(cx, cy, tileSize - 4, tileSize - 4, 0xffffff, 0.3)
-                    .setInteractive()
-                    .setStrokeStyle(2, 0xffffff);
-                
-                tile.on('pointerdown', () => this.placeHero(tile, cx, cy));
-            }
-        }
-    }
-
-    placeHero(tile, x, y) {
-        if (!GameState.selectedHeroToPlace) {
-            // Mostrar mensaje flotante en Phaser
-            let adv = this.add.text(x, y, "Selecciona héroe abajo", { color: 'white', backgroundColor: 'black' }).setOrigin(0.5);
-            this.time.delayedCall(1000, () => adv.destroy());
-            return;
-        }
-
-        let heroData = GameState.heroesDB[GameState.selectedHeroToPlace];
+function checkCombatEnd() {
+    if (combatState.enemyHp <= 0 && combatState.playerHp <= 0) {
+        combatState.enemyHp = 0; combatState.playerHp = 0;
+        logCombat("¡Empate! Ambos castillos fueron destruidos.");
+        combatState.active = false;
+        setTimeout(fleeCombat, 2500);
+    } else if (combatState.enemyHp <= 0) {
+        combatState.enemyHp = 0;
+        // Recompensa en puntos y materiales
+        let rewardPoints = 10;
+        let rewardWood = 30;
+        let rewardStone = 20;
         
-        let newHero = new HeroEntity(this, x, y, heroData);
-        this.heroes.push(newHero);
+        resources.points += rewardPoints;
+        resources.wood += rewardWood;
+        resources.stone += rewardStone;
         
-        // Bloquear casilla
-        tile.disableInteractive();
-        tile.fillColor = 0x000000;
-        tile.alpha = 0.1;
-        
-        // Deseleccionar
-        GameState.selectedHeroToPlace = null;
-        document.querySelectorAll('.hero-card').forEach(c => c.classList.remove('selected'));
-    }
-
-    spawnEnemy() {
-        let xPos = Phaser.Math.Between(50, this.scale.width - 50);
-        let enemy = new EnemyEntity(this, xPos, -50);
-        this.enemies.add(enemy);
-        enemy.body.setVelocityY(enemy.speed);
-    }
-
-    update(time, delta) {
-        this.heroes.forEach(h => h.update(time, this.enemies));
-
-        this.enemies.getChildren().forEach(enemy => {
-            if (enemy.y > this.scale.height + 50) {
-                // Penalización al dejar pasar zombies
-                GameState.coins = Math.max(0, GameState.coins - 50);
-                actualizarUI();
-                enemy.destroy();
-            }
-        });
+        logCombat(`¡VICTORIA! Castillo enemigo destruido. Ganaste ${rewardPoints}🏆.`);
+        updateUI();
+        combatState.active = false;
+        setTimeout(fleeCombat, 3000);
+    } else if (combatState.playerHp <= 0) {
+        combatState.playerHp = 0;
+        logCombat("DERROTA. Tu castillo fue arrasado. Pierdes recursos.");
+        resources.wood = Math.max(0, resources.wood - 10);
+        resources.stone = Math.max(0, resources.stone - 10);
+        updateUI();
+        combatState.active = false;
+        setTimeout(fleeCombat, 3000);
     }
 }
 
-// ==========================================
-// INICIAR MOTOR
-// ==========================================
-const config = {
-    type: Phaser.AUTO,
-    parent: 'game-container',
-    width: window.innerWidth,
-    height: window.innerHeight,
-    backgroundColor: '#8cc460',
-    physics: { default: 'arcade' },
-    scene: [MainGame]
-};
+function updateCombatUI() {
+    let pBar = document.getElementById('hp-player');
+    let eBar = document.getElementById('hp-enemy');
+    
+    pBar.max = combatState.maxPlayerHp;
+    pBar.value = combatState.playerHp;
+    document.getElementById('hp-player-text').innerText = `${combatState.playerHp}/${combatState.maxPlayerHp}`;
+    
+    eBar.max = combatState.maxEnemyHp;
+    eBar.value = combatState.enemyHp;
+    document.getElementById('hp-enemy-text').innerText = `${combatState.enemyHp}/${combatState.maxEnemyHp}`;
+}
 
-const game = new Phaser.Game(config);
+function logCombat(msg) {
+    document.getElementById('combat-log').innerText = msg;
+}
 
-window.addEventListener('resize', () => {
-    game.scale.resize(window.innerWidth, window.innerHeight);
-});
+function fleeCombat() {
+    document.getElementById('combat-overlay').classList.add('hidden');
+    combatState.active = false;
+}
