@@ -9,21 +9,24 @@ function resizeCanvas() {
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// --- SISTEMA DE CUADRÍCULA Y CÁMARA ---
+// --- SISTEMA DE CUADRÍCULA, MAPA Y CÁMARA ---
 const TILE_SIZE = 50; 
-let camera = { x: 0, y: 0, zoom: 1 };
-// Centrar la cámara inicialmente
-camera.x = canvas.width / 2;
-camera.y = canvas.height / 2;
+let gridSize = 15; // Límite inicial de 15x15
+let expandCost = { wood: 100, stone: 100 };
 
-// Recursos y Stats
-let resources = { wood: 50, stone: 50, points: 0 };
+let camera = { x: 0, y: 0, zoom: 1 };
+// Centrar la cámara en el medio del mapa inicial
+camera.x = (gridSize * TILE_SIZE) / 2;
+camera.y = (gridSize * TILE_SIZE) / 2;
+
+// --- ESTADOS Y RECURSOS ---
+let isNavMode = true; // Inicia en modo navegación
+let resources = { wood: 150, stone: 150, points: 0 };
 let power = { attack: 5, defense: 50 };
 
-// Mapa (Construcciones)
-// El castillo base inicia en el centro del mundo (0,0)
+// El castillo se posiciona en el centro matemático del grid inicial (7, 7)
 let buildings = [
-    { gridX: 0, gridY: 0, type: 'castle', color: '#4a4a4a', emoji: '🏰' }
+    { gridX: Math.floor(gridSize/2), gridY: Math.floor(gridSize/2), type: 'castle', color: '#4a4a4a', emoji: '🏰' }
 ];
 let currentSelection = null;
 
@@ -33,52 +36,79 @@ const buildCosts = {
     archer: { wood: 10, stone: 0, color: '#f1c40f', emoji: '🏹', def: 0, atk: 15 }
 };
 
-// --- RENDERIZADO ---
+// --- INICIALIZACIÓN UI ---
+function initModeUI() {
+    let btn = document.getElementById('btn-toggle-mode');
+    btn.classList.add('mode-nav');
+    btn.innerHTML = "✋ Modo Navegación";
+}
+initModeUI();
+
+function toggleMode() {
+    isNavMode = !isNavMode;
+    let btn = document.getElementById('btn-toggle-mode');
+    
+    if (isNavMode) {
+        btn.classList.replace('mode-build', 'mode-nav');
+        btn.innerHTML = "✋ Modo Navegación";
+        // Limpiar selección de edificio al cambiar de modo
+        currentSelection = null;
+        document.querySelectorAll('.build-btn').forEach(b => b.classList.remove('selected'));
+        showNotification("Modo Navegación Activo");
+    } else {
+        btn.classList.replace('mode-nav', 'mode-build');
+        btn.innerHTML = "🔨 Modo Construir";
+        showNotification("Modo Construir Activo. Selecciona un edificio.");
+    }
+}
+
+// --- RENDERIZADO DEL MUNDO ---
 function drawWorld() {
-    // 1. Limpiar pantalla
-    ctx.fillStyle = '#111';
+    // Fondo base exterior (Fuera del mapa)
+    ctx.fillStyle = '#2c3e50';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.save();
     
-    // 2. Aplicar transformaciones de cámara (Mover y hacer Zoom)
+    // Cámara
     ctx.translate(canvas.width / 2, canvas.height / 2);
     ctx.scale(camera.zoom, camera.zoom);
     ctx.translate(-camera.x, -camera.y);
 
-    // 3. Dibujar fondo verde
+    let mapWidth = gridSize * TILE_SIZE;
+    let mapHeight = gridSize * TILE_SIZE;
+
+    // Fondo del territorio jugable
     ctx.fillStyle = '#4c7c2b';
-    ctx.fillRect(camera.x - 2000, camera.y - 2000, 4000, 4000); // Mundo grande
+    ctx.fillRect(0, 0, mapWidth, mapHeight);
 
-    // 4. Dibujar Cuadrícula (Grid)
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
-    ctx.lineWidth = 2;
-    let startX = Math.floor((camera.x - (canvas.width/2)/camera.zoom) / TILE_SIZE) * TILE_SIZE;
-    let endX = Math.floor((camera.x + (canvas.width/2)/camera.zoom) / TILE_SIZE) * TILE_SIZE + TILE_SIZE;
-    let startY = Math.floor((camera.y - (canvas.height/2)/camera.zoom) / TILE_SIZE) * TILE_SIZE;
-    let endY = Math.floor((camera.y + (canvas.height/2)/camera.zoom) / TILE_SIZE) * TILE_SIZE + TILE_SIZE;
-
+    // Dibujar líneas de Cuadrícula (Estrictamente dentro del límite)
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+    ctx.lineWidth = 1;
     ctx.beginPath();
-    for (let x = startX; x <= endX; x += TILE_SIZE) {
-        ctx.moveTo(x, startY); ctx.lineTo(x, endY);
+    for (let x = 0; x <= mapWidth; x += TILE_SIZE) {
+        ctx.moveTo(x, 0); ctx.lineTo(x, mapHeight);
     }
-    for (let y = startY; y <= endY; y += TILE_SIZE) {
-        ctx.moveTo(startX, y); ctx.lineTo(endX, y);
+    for (let y = 0; y <= mapHeight; y += TILE_SIZE) {
+        ctx.moveTo(0, y); ctx.lineTo(mapWidth, y);
     }
     ctx.stroke();
 
-    // 5. Dibujar Edificios
+    // Dibujar borde del mapa
+    ctx.strokeStyle = '#d4af37';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, mapWidth, mapHeight);
+
+    // Dibujar Edificios
     buildings.forEach(b => {
         let px = b.gridX * TILE_SIZE;
         let py = b.gridY * TILE_SIZE;
         
-        // Base del edificio
         ctx.fillStyle = b.color;
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         
-        // Borde interior para dar estilo 3D/Pixel
         ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 2;
         ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
 
         if (b.emoji) {
@@ -95,18 +125,16 @@ function drawWorld() {
 }
 drawWorld();
 
-// --- CONTROLES Y NAVEGACIÓN ---
+// --- CONTROLES Y SEPARACIÓN DE NAVEGACIÓN/CONSTRUCCIÓN ---
 function changeZoom(amount) {
     camera.zoom += amount;
-    if (camera.zoom < 0.4) camera.zoom = 0.4; // Límite alejar
-    if (camera.zoom > 2.5) camera.zoom = 2.5; // Límite acercar
+    if (camera.zoom < 0.4) camera.zoom = 0.4;
+    if (camera.zoom > 2.5) camera.zoom = 2.5;
 }
 
-// Variables para arrastrar el mapa
 let isDragging = false;
 let startDrag = { x: 0, y: 0 };
 let initialCamera = { x: 0, y: 0 };
-let hasMoved = false; // Diferenciar entre "tap" (construir) y "drag" (mover)
 
 function getEventCords(e) {
     if (e.touches && e.touches.length > 0) return { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -114,56 +142,85 @@ function getEventCords(e) {
 }
 
 canvas.addEventListener('pointerdown', (e) => {
-    isDragging = true;
-    hasMoved = false;
-    let pos = getEventCords(e);
-    startDrag = { x: pos.x, y: pos.y };
-    initialCamera = { x: camera.x, y: camera.y };
+    // Si es modo navegación, preparamos el arrastre
+    if (isNavMode) {
+        isDragging = true;
+        let pos = getEventCords(e);
+        startDrag = { x: pos.x, y: pos.y };
+        initialCamera = { x: camera.x, y: camera.y };
+    }
 });
 
 window.addEventListener('pointermove', (e) => {
-    if (!isDragging) return;
-    let pos = getEventCords(e);
-    let dx = pos.x - startDrag.x;
-    let dy = pos.y - startDrag.y;
-    
-    if (Math.abs(dx) > 10 || Math.abs(dy) > 10) hasMoved = true;
-
-    if (hasMoved) {
-        // Mover cámara (Invertimos signos para que arrastrar mueva el mundo como en el móvil)
+    // Solo permitimos mover el mapa si el modo de navegación está activo
+    if (isNavMode && isDragging) {
+        let pos = getEventCords(e);
+        let dx = pos.x - startDrag.x;
+        let dy = pos.y - startDrag.y;
+        
         camera.x = initialCamera.x - (dx / camera.zoom);
         camera.y = initialCamera.y - (dy / camera.zoom);
     }
 });
 
 window.addEventListener('pointerup', (e) => {
-    isDragging = false;
-    if (!hasMoved) {
+    if (isNavMode) {
+        isDragging = false;
+    } else {
+        // En modo construcción, un toque coloca el edificio directamente
         let pos = getEventCords(e);
         handlePlacement(pos.x, pos.y);
     }
 });
 
-// --- LÓGICA DE CONSTRUCCIÓN ---
+// --- EXPANSIÓN Y CONSTRUCCIÓN ---
+function expandGrid() {
+    if (resources.wood >= expandCost.wood && resources.stone >= expandCost.stone) {
+        resources.wood -= expandCost.wood;
+        resources.stone -= expandCost.stone;
+        
+        gridSize += 5; // Expande la cuadrícula a +5 (ej: 15x15 -> 20x20)
+        
+        // Aumentar el coste para la próxima vez
+        expandCost.wood += 50;
+        expandCost.stone += 50;
+        
+        document.getElementById('expand-cost').innerText = `${expandCost.wood}🪵 ${expandCost.stone}🪨`;
+        updateUI();
+        showNotification(`¡Territorio expandido a ${gridSize}x${gridSize}!`);
+    } else {
+        showNotification("Recursos insuficientes para expandir");
+    }
+}
+
 function selectBuilding(type) {
+    if (isNavMode) {
+        showNotification("¡Cambia al Modo Construir primero!");
+        return;
+    }
     currentSelection = type;
     document.querySelectorAll('.build-btn').forEach(btn => btn.classList.remove('selected'));
     event.currentTarget.classList.add('selected');
-    showNotification("Toque una cuadrícula vacía");
 }
 
 function handlePlacement(screenX, screenY) {
-    if (!currentSelection) return;
+    if (!currentSelection) {
+        showNotification("Selecciona un edificio abajo");
+        return;
+    }
 
-    // Convertir coordenadas de pantalla a coordenadas del mundo 2D
     let worldX = ((screenX - canvas.width / 2) / camera.zoom) + camera.x;
     let worldY = ((screenY - canvas.height / 2) / camera.zoom) + camera.y;
 
-    // Encajar en la cuadrícula (Snap to grid)
     let gridX = Math.floor(worldX / TILE_SIZE);
     let gridY = Math.floor(worldY / TILE_SIZE);
 
-    // Verificar si la casilla está ocupada
+    // Verificar si el toque está fuera de los límites (15x15 o el tamaño actual)
+    if (gridX < 0 || gridX >= gridSize || gridY < 0 || gridY >= gridSize) {
+        showNotification("Límite del territorio alcanzado");
+        return;
+    }
+
     let isOccupied = buildings.some(b => b.gridX === gridX && b.gridY === gridY);
     if (isOccupied) {
         showNotification("¡Casilla ocupada!");
@@ -192,7 +249,7 @@ function handlePlacement(screenX, screenY) {
     }
 }
 
-// --- UI y RECURSOS ---
+// --- UI y COMBATE ---
 function updateUI() {
     document.getElementById('res-wood').innerText = resources.wood;
     document.getElementById('res-stone').innerText = resources.stone;
@@ -214,9 +271,7 @@ function showNotification(msg) {
     setTimeout(() => uiLog.innerText = "", 2000);
 }
 
-// --- COMBATE ---
 let combatState = { active: false, playerHp: 100, enemyHp: 100 };
-
 function openCombat() {
     document.getElementById('combat-overlay').classList.remove('hidden');
     let maxPlayerHp = 100 + power.defense;
@@ -230,11 +285,9 @@ function performAttack() {
     if (!combatState.active) return;
     let myDamage = power.attack + Math.floor(Math.random() * 10);
     let enemyDamage = (5 + (resources.points * 2)) + Math.floor(Math.random() * 10);
-
     combatState.enemyHp -= myDamage;
     combatState.playerHp -= enemyDamage;
     document.getElementById('combat-log').innerText = `Hiciste ${myDamage} daño. Recibiste ${enemyDamage} daño.`;
-    
     if (combatState.enemyHp <= 0 || combatState.playerHp <= 0) resolveCombat();
     updateCombatUI();
 }
@@ -264,5 +317,4 @@ function updateCombatUI() {
     document.getElementById('hp-player-text').innerText = `${combatState.playerHp}/${combatState.maxPlayerHp}`;
     document.getElementById('hp-enemy-text').innerText = `${combatState.enemyHp}/${combatState.maxEnemyHp}`;
 }
-
 function fleeCombat() { document.getElementById('combat-overlay').classList.add('hidden'); combatState.active = false; }
