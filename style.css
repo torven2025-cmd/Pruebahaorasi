@@ -1,22 +1,22 @@
-/* style.css */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    user-select: none; /* Evita seleccionar texto al jugar */
+    user-select: none;
+    -webkit-user-select: none;
 }
 
 body {
-    background-color: #222;
-    overflow: hidden; /* Evita el scroll en móviles */
+    background-color: #1a1a1a;
+    overflow: hidden;
 }
 
 #game-container {
     position: relative;
     width: 100vw;
     height: 100vh;
-    background-color: #557a2b; /* Color de pasto base */
+    background-color: #3d5e21; /* Verde más oscuro de fondo */
 }
 
 canvas {
@@ -31,157 +31,129 @@ canvas {
     left: 0;
     width: 100%;
     height: 100%;
-    pointer-events: none; /* Permite clickear el canvas a través del div */
+    pointer-events: none;
+    z-index: 5;
 }
 
-/* Permitir clicks en los elementos de la UI */
-#resource-bar, #build-menu, #action-menu, #combat-overlay, .build-btn, button {
+#resource-bar, #build-menu, #action-menu, #zoom-controls, #combat-overlay, button {
     pointer-events: auto;
 }
 
+/* Barra Superior Mejorada */
 #resource-bar {
     display: flex;
     justify-content: space-around;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 10px;
-    color: white;
-    font-weight: bold;
-    border-bottom: 2px solid #444;
-}
-
-.resource {
-    font-size: 1.2rem;
-}
-
-#action-menu {
-    position: absolute;
-    right: 10px;
-    top: 60px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-#action-menu button {
+    background: linear-gradient(180deg, #2a2a2a 0%, #111 100%);
     padding: 12px;
-    background: #d4af37;
-    border: 2px solid #8b6508;
-    border-radius: 8px;
+    color: #ffd700;
     font-weight: bold;
-    cursor: pointer;
-    box-shadow: 0 4px #8b6508;
-    transition: transform 0.1s;
+    border-bottom: 3px solid #000;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.5);
 }
 
-#action-menu button:active {
-    transform: translateY(4px);
-    box-shadow: 0 0 #8b6508;
-}
+.resource { font-size: 1.1rem; text-shadow: 1px 1px 2px black; }
 
-#build-menu {
+/* Controles de Zoom (NUEVO) */
+#zoom-controls {
     position: absolute;
-    bottom: 10px;
-    left: 50%;
-    transform: translateX(-50%);
-    display: flex;
-    gap: 10px;
-    background: rgba(0, 0, 0, 0.6);
-    padding: 10px;
-    border-radius: 15px;
-    width: 95%;
-    max-width: 500px;
-    justify-content: center;
-}
-
-.build-btn {
-    flex: 1;
-    padding: 10px 5px;
-    background: #555;
-    color: white;
-    border: 2px solid #777;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-.build-btn.selected {
-    background: #2e8b57;
-    border-color: #3cb371;
-}
-
-/* --- Sistema de Combate --- */
-#combat-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.85);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 10;
-}
-
-.hidden {
-    display: none !important;
-}
-
-.combat-panel {
-    background: #3e2723;
-    color: white;
-    padding: 20px;
-    border-radius: 10px;
-    border: 4px solid #5d4037;
-    width: 90%;
-    max-width: 400px;
-    text-align: center;
-}
-
-.health-bars {
-    margin: 20px 0;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
     display: flex;
     flex-direction: column;
     gap: 15px;
 }
 
-.hp-box progress {
-    width: 100%;
-    height: 20px;
-    appearance: none;
-}
-.hp-box progress::-webkit-progress-value { background: #e53935; }
-.hp-box progress::-moz-progress-bar { background: #e53935; }
-
-#combat-log {
-    margin: 15px 0;
-    padding: 10px;
-    background: rgba(0,0,0,0.5);
-    border-radius: 5px;
-    min-height: 50px;
-    font-size: 0.9rem;
+#zoom-controls button {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #444;
+    color: white;
+    font-size: 1.2rem;
+    border: 2px solid #666;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.4);
 }
 
-.combat-actions button {
-    padding: 10px 20px;
-    margin: 5px;
-    font-size: 1.1rem;
-    cursor: pointer;
-    border-radius: 5px;
-    border: none;
+#action-menu {
+    position: absolute;
+    right: 15px;
+    top: 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+#action-menu button {
+    padding: 12px 15px;
+    background: linear-gradient(180deg, #d4af37 0%, #aa8c2c 100%);
+    border: 2px solid #5c4b17;
+    border-radius: 8px;
     font-weight: bold;
+    color: #222;
+    box-shadow: 0 4px #5c4b17;
+}
+#action-menu button:active { transform: translateY(4px); box-shadow: 0 0 #5c4b17; }
+
+/* Menú inferior corregido */
+#build-menu {
+    position: absolute;
+    bottom: 40px; /* Elevado para evitar cortes en Android */
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 8px;
+    background: rgba(30, 30, 30, 0.85);
+    padding: 12px;
+    border-radius: 12px;
+    width: 95%;
+    max-width: 400px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.6);
+    border: 2px solid #444;
 }
 
-#btn-attack { background: #d32f2f; color: white; }
-#btn-flee { background: #757575; color: white; }
+.build-btn {
+    flex: 1;
+    padding: 10px 2px;
+    background: linear-gradient(180deg, #555 0%, #333 100%);
+    color: white;
+    border: 2px solid #222;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    box-shadow: 0 3px #111;
+}
 
-/* Notificaciones */
+.build-btn.selected {
+    background: linear-gradient(180deg, #3cb371 0%, #2e8b57 100%);
+    border-color: #1e5c3a;
+    box-shadow: 0 3px #1e5c3a;
+}
+
 #notification-area {
     position: absolute;
-    top: 30%;
+    top: 25%;
     left: 50%;
     transform: translate(-50%, -50%);
-    color: #ffeb3b;
+    color: #fff;
     font-weight: bold;
     font-size: 1.2rem;
-    text-shadow: 1px 1px 2px black;
+    text-shadow: 2px 2px 4px #000;
+    pointer-events: none;
 }
+
+/* Modales (Combate) */
+#combat-overlay {
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex; justify-content: center; align-items: center;
+}
+.hidden { display: none !important; }
+.combat-panel { background: #3e2723; padding: 20px; border-radius: 10px; border: 4px solid #5d4037; width: 90%; color: white; text-align: center; }
+.health-bars { display: flex; flex-direction: column; gap: 15px; margin: 20px 0; }
+progress { width: 100%; height: 25px; border-radius: 5px; }
+progress::-webkit-progress-value { background: #e53935; border-radius: 5px; }
+progress::-webkit-progress-bar { background: #222; border-radius: 5px; }
+#btn-attack { background: #d32f2f; color: white; padding: 10px; border:none; border-radius: 5px; font-weight: bold; font-size: 1.1rem; margin: 5px;}
+#btn-flee { background: #757575; color: white; padding: 10px; border:none; border-radius: 5px; font-weight: bold; font-size: 1.1rem; margin: 5px;}
