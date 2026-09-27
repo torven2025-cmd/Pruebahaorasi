@@ -14,12 +14,10 @@ let resources = savedData ? savedData.resources : { wood: 100, stone: 100, point
 let buildings = savedData ? savedData.buildings : [];
 let maxTroops = 0; 
 
-let isBuildMode = false; 
-let inCombat = false; 
-let frameCount = 0; 
+let isBuildMode = false; let inCombat = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
 
-// ESTADOS DEL DRAG & DROP DE CONSTRUCCIÓN
+// ESTADOS DEL DRAG & DROP
 let pendingBuildingType = null;
 let pendingBuildingData = null;
 let pGridX = -1; let pGridY = -1;
@@ -53,7 +51,6 @@ setInterval(() => {
     }
 }, 1000);
 
-// Actualización y Motor 
 function update() {
     frameCount++;
     if (inCombat) {
@@ -100,7 +97,6 @@ function getNearestBuilding(x, y) {
     return nearest;
 }
 
-// Renderizado Visual
 function draw() {
     ctx.fillStyle = '#2c3e50'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.save();
@@ -111,7 +107,6 @@ function draw() {
     let mapSize = gridSize * TILE_SIZE;
     ctx.fillStyle = '#4c7c2b'; ctx.fillRect(0, 0, mapSize, mapSize);
 
-    // Cuadrícula visible en modo construcción
     if (isBuildMode) {
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1; ctx.beginPath();
         for (let x = 0; x <= mapSize; x += TILE_SIZE) { ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); }
@@ -136,16 +131,13 @@ function draw() {
         }
     });
 
-    // DIBUJAR ESTRUCTURA PENDIENTE (Drag & Drop)
     if (pendingBuildingData && pGridX >= 0 && pGridY >= 0) {
         let px = pGridX * TILE_SIZE; let py = pGridY * TILE_SIZE;
         let isOccupied = buildings.some(b => b.gridX === pGridX && b.gridY === pGridY);
         
-        // Base roja o verde indicando si se puede colocar
         ctx.fillStyle = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(46, 204, 113, 0.5)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         
-        // Estructura flotante
         ctx.globalAlpha = 0.8;
         ctx.fillStyle = pendingBuildingData.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         if (pendingBuildingData.emoji) {
@@ -171,55 +163,76 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- CONTROLES INTELIGENTES DE CÁMARA Y ARRASTRE ---
-let isDraggingCamera = false; let isDraggingBuilding = false;
-let startDrag = { x: 0, y: 0 }; let initialCam = { x: 0, y: 0 };
-function getCords(e) { return (e.touches && e.touches.length > 0) ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : { x: e.clientX, y: e.clientY }; }
+// --- MOTOR MULTI-TÁCTIL (1 DEDO = EDIFICIO, 2 DEDOS = CÁMARA) ---
+let pointers = new Map();
+let initialCam = { x: 0, y: 0 };
+let startDragPan = { x: 0, y: 0 };
+let hasMoved = false;
+
+function updatePointers(e) { pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); }
 
 canvas.addEventListener('pointerdown', e => {
-    let pos = getCords(e);
-    let worldX = ((pos.x - canvas.width/2) / camera.zoom) + camera.x;
-    let worldY = ((pos.y - canvas.height/2) / camera.zoom) + camera.y;
-    let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
+    updatePointers(e);
+    hasMoved = false;
 
-    // Si tocaste justo en la estructura pendiente, la arrastras. Si no, arrastras la cámara.
-    if (pendingBuildingData && gX === pGridX && gY === pGridY) {
-        isDraggingBuilding = true;
-    } else {
-        isDraggingCamera = true;
-        startDrag = pos; initialCam = { x: camera.x, y: camera.y };
-        // Si tocas en otro lado de la cuadrícula, la estructura se mueve allí automáticamente
-        if (pendingBuildingData && gX >= 0 && gX < gridSize && gY >= 0 && gY < gridSize) {
-            pGridX = gX; pGridY = gY;
+    if (pointers.size === 1) {
+        let pts = Array.from(pointers.values());
+        if (pendingBuildingData) {
+            // Un toque mueve el edificio inmediatamente a esa posición
+            let worldX = ((pts[0].x - canvas.width/2) / camera.zoom) + camera.x;
+            let worldY = ((pts[0].y - canvas.height/2) / camera.zoom) + camera.y;
+            pGridX = Math.floor(worldX / TILE_SIZE); pGridY = Math.floor(worldY / TILE_SIZE);
+            pGridX = Math.max(0, Math.min(pGridX, gridSize - 1));
+            pGridY = Math.max(0, Math.min(pGridY, gridSize - 1));
+        } else {
+            startDragPan = { x: pts[0].x, y: pts[0].y };
+            initialCam = { x: camera.x, y: camera.y };
         }
+    } else if (pointers.size === 2) {
+        // Dos dedos preparan el movimiento de la cámara, incluso si hay un edificio
+        let pts = Array.from(pointers.values());
+        startDragPan = { x: (pts[0].x + pts[1].x)/2, y: (pts[0].y + pts[1].y)/2 };
+        initialCam = { x: camera.x, y: camera.y };
     }
 });
 
 window.addEventListener('pointermove', e => {
-    let pos = getCords(e);
-    if (isDraggingCamera) {
-        let dx = pos.x - startDrag.x, dy = pos.y - startDrag.y;
+    if (!pointers.has(e.pointerId)) return;
+    updatePointers(e);
+
+    if (pointers.size === 1) {
+        let pts = Array.from(pointers.values());
+        if (pendingBuildingData) {
+            // Un dedo: Mueve solo la estructura (La cámara se bloquea)
+            let worldX = ((pts[0].x - canvas.width/2) / camera.zoom) + camera.x;
+            let worldY = ((pts[0].y - canvas.height/2) / camera.zoom) + camera.y;
+            pGridX = Math.floor(worldX / TILE_SIZE); pGridY = Math.floor(worldY / TILE_SIZE);
+            pGridX = Math.max(0, Math.min(pGridX, gridSize - 1)); pGridY = Math.max(0, Math.min(pGridY, gridSize - 1));
+        } else {
+            // Un dedo (modo normal): Mueve la cámara
+            let dx = pts[0].x - startDragPan.x, dy = pts[0].y - startDragPan.y;
+            if (Math.abs(dx) > 10 || Math.abs(dy) > 10) hasMoved = true;
+            camera.x = initialCam.x - (dx / camera.zoom); camera.y = initialCam.y - (dy / camera.zoom);
+        }
+    } else if (pointers.size === 2) {
+        // Dos dedos: Mueve la cámara siempre
+        let pts = Array.from(pointers.values());
+        let midX = (pts[0].x + pts[1].x)/2, midY = (pts[0].y + pts[1].y)/2;
+        let dx = midX - startDragPan.x, dy = midY - startDragPan.y;
+        hasMoved = true;
         camera.x = initialCam.x - (dx / camera.zoom); camera.y = initialCam.y - (dy / camera.zoom);
-    } else if (isDraggingBuilding) {
-        let worldX = ((pos.x - canvas.width/2) / camera.zoom) + camera.x;
-        let worldY = ((pos.y - canvas.height/2) / camera.zoom) + camera.y;
-        pGridX = Math.floor(worldX / TILE_SIZE); pGridY = Math.floor(worldY / TILE_SIZE);
-        pGridX = Math.max(0, Math.min(pGridX, gridSize - 1)); // Límite de mapa
-        pGridY = Math.max(0, Math.min(pGridY, gridSize - 1));
     }
 });
 
 window.addEventListener('pointerup', e => {
-    isDraggingCamera = false; isDraggingBuilding = false;
-    
-    // Desplegar tropas si estamos en combate
-    if (inCombat) {
-        let pos = getCords(e);
-        let worldX = ((pos.x - canvas.width/2) / camera.zoom) + camera.x;
-        let worldY = ((pos.y - canvas.height/2) / camera.zoom) + camera.y;
+    pointers.delete(e.pointerId);
+    if (pointers.size === 0 && !hasMoved && inCombat) {
+        let worldX = ((e.clientX - canvas.width/2) / camera.zoom) + camera.x;
+        let worldY = ((e.clientY - canvas.height/2) / camera.zoom) + camera.y;
         deployTroop(worldX, worldY);
     }
 });
+window.addEventListener('pointercancel', e => pointers.delete(e.pointerId));
 
 // --- UI DE CONSTRUCCIÓN ---
 function enterBuildMode() {
@@ -238,10 +251,8 @@ function exitBuildMode() {
 function selectBuilding(type) {
     pendingBuildingType = type;
     pendingBuildingData = entityData[type];
-    pGridX = Math.floor(camera.x / TILE_SIZE); // Aparece en el centro de la cámara
+    pGridX = Math.floor(camera.x / TILE_SIZE);
     pGridY = Math.floor(camera.y / TILE_SIZE);
-    
-    // Ocultar carrusel, mostrar botones verde y rojo
     document.getElementById('build-tray').classList.add('hidden');
     document.getElementById('placement-controls').classList.remove('hidden');
 }
@@ -254,7 +265,6 @@ function cancelPlacement() {
 
 function confirmPlacement() {
     if (!pendingBuildingData) return;
-    
     if (buildings.some(b => b.gridX === pGridX && b.gridY === pGridY)) return showNotification("Casilla ocupada");
     if (resources.wood < pendingBuildingData.wood || resources.stone < pendingBuildingData.stone) return showNotification("Recursos insuficientes");
 
@@ -262,7 +272,7 @@ function confirmPlacement() {
     buildings.push({ id: Date.now(), gridX: pGridX, gridY: pGridY, type: pendingBuildingType, ...pendingBuildingData, hp: pendingBuildingData.maxHp });
     
     updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!");
-    cancelPlacement(); // Vuelve al carrusel
+    cancelPlacement(); 
 }
 
 // --- UTILIDADES ---
