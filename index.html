@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle 6.0 - Economía Pasiva</title>
+    <title>Castle Battle 7.0 - Drag & Drop</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -18,43 +18,55 @@
                 <div class="resource" title="Puntos">🏆 <span id="res-points">0</span></div>
             </div>
 
-            <div id="base-ui">
+            <!-- UI NORMAL -->
+            <div id="normal-ui">
                 <div id="zoom-controls">
                     <button onclick="changeZoom(0.2)">🔍+</button>
                     <button onclick="changeZoom(-0.2)">🔍-</button>
                 </div>
-
                 <div id="action-menu">
-                    <button id="btn-toggle-mode" onclick="toggleMode()">✋ Mover Mapa</button>
-                    <button onclick="trainTroop()">Entrenar Bárbaro<br><small>10🪵</small></button>
-                    <button id="btn-combat" onclick="startCombatMatch()">⚔️ Atacar Base</button>
-                </div>
-
-                <!-- Menú de construcción expandido -->
-                <div id="build-menu">
-                    <button class="build-btn" onclick="selectBuilding('lumbermill')">
-                        🪚 Aserradero<br><small>20🪵 10🪨</small>
-                    </button>
-                    <button class="build-btn" onclick="selectBuilding('mine')">
-                        ⛏️ Mina<br><small>10🪵 20🪨</small>
-                    </button>
-                    <button class="build-btn" onclick="selectBuilding('camp')">
-                        ⛺ Campamento<br><small>50🪵 30🪨</small>
-                    </button>
-                    <button class="build-btn" onclick="selectBuilding('wall')">
-                        🧱 Muro<br><small>10🪵 5🪨</small>
-                    </button>
-                    <button class="build-btn" onclick="selectBuilding('tower')">
-                        🗼 Torre<br><small>20🪵 15🪨</small>
-                    </button>
+                    <button class="action-btn build-mode-btn" onclick="enterBuildMode()">🔨 Modo Construir</button>
+                    <button class="action-btn" onclick="trainTroop()">Entrenar Bárbaro<br><small>10🪵</small></button>
+                    <button class="action-btn attack-btn" onclick="startCombatMatch()">⚔️ Atacar Base</button>
                 </div>
             </div>
 
+            <!-- UI MODO CONSTRUCCIÓN (Oculta por defecto) -->
+            <div id="build-ui" class="hidden">
+                <button id="btn-exit-build" onclick="exitBuildMode()">Salir del Modo</button>
+                
+                <!-- Carrusel horizontal de edificios -->
+                <div id="build-tray">
+                    <button class="build-item" onclick="selectBuilding('lumbermill')">
+                        <span class="icon">🪚</span><br>Aserradero<br><small>20🪵 10🪨</small>
+                    </button>
+                    <button class="build-item" onclick="selectBuilding('mine')">
+                        <span class="icon">⛏️</span><br>Mina<br><small>10🪵 20🪨</small>
+                    </button>
+                    <button class="build-item" onclick="selectBuilding('camp')">
+                        <span class="icon">⛺</span><br>Campamento<br><small>50🪵 30🪨</small>
+                    </button>
+                    <button class="build-item" onclick="selectBuilding('wall')">
+                        <span class="icon">🧱</span><br>Muro<br><small>10🪵 5🪨</small>
+                    </button>
+                    <button class="build-item" onclick="selectBuilding('tower')">
+                        <span class="icon">🗼</span><br>Torre<br><small>20🪵 15🪨</small>
+                    </button>
+                </div>
+
+                <!-- Botones de Confirmación (Aparecen al seleccionar un edificio) -->
+                <div id="placement-controls" class="hidden">
+                    <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
+                    <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
+                </div>
+            </div>
+
+            <!-- UI DE COMBATE -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
-                    <p>Toca las zonas exteriores para desplegar tropas</p>
-                    <button onclick="endCombat()">Bandera Blanca (Rendirse)</button>
+                    <p>Toca los bordes para soltar bárbaros</p>
+                    <button onclick="endCombat()">Rendirse</button>
                 </div>
             </div>
             
