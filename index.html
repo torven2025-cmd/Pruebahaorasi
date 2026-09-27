@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle 3.0</title>
+    <title>Castle Battle 4.0 - Simulador de Combate</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,60 +11,47 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="ui-layer">
+            <!-- Recursos y Tropas -->
             <div id="resource-bar">
-                <div class="resource" title="Madera">🪵 <span id="res-wood">150</span></div>
-                <div class="resource" title="Piedra">🪨 <span id="res-stone">150</span></div>
+                <div class="resource" title="Madera">🪵 <span id="res-wood">200</span></div>
+                <div class="resource" title="Piedra">🪨 <span id="res-stone">200</span></div>
+                <div class="resource" title="Bárbaros">🗡️ <span id="res-troops">0</span></div>
                 <div class="resource" title="Puntos">🏆 <span id="res-points">0</span></div>
             </div>
 
-            <!-- Controles de Cámara -->
-            <div id="zoom-controls">
-                <button onclick="changeZoom(0.2)">🔍+</button>
-                <button onclick="changeZoom(-0.2)">🔍-</button>
+            <!-- UI de Modo Base (Normal) -->
+            <div id="base-ui">
+                <div id="zoom-controls">
+                    <button onclick="changeZoom(0.2)">🔍+</button>
+                    <button onclick="changeZoom(-0.2)">🔍-</button>
+                </div>
+
+                <div id="action-menu">
+                    <button id="btn-toggle-mode" onclick="toggleMode()">✋ Mover Mapa</button>
+                    <button onclick="trainTroop()">Entrenar Bárbaro<br><small>10🪵</small></button>
+                    <button onclick="gatherResources()">⛏️ Recolectar</button>
+                    <button id="btn-combat" onclick="startCombatMatch()">⚔️ Atacar Base</button>
+                </div>
+
+                <div id="build-menu">
+                    <button class="build-btn" onclick="selectBuilding('camp')">
+                        ⛺ Campamento<br><small>50🪵 30🪨</small>
+                    </button>
+                    <button class="build-btn" onclick="selectBuilding('wall')">
+                        🧱 Muro<br><small>10🪵 5🪨</small>
+                    </button>
+                    <button class="build-btn" onclick="selectBuilding('tower')">
+                        🗼 Torre<br><small>20🪵 15🪨</small>
+                    </button>
+                </div>
             </div>
 
-            <!-- Menú de Acciones -->
-            <div id="action-menu">
-                <!-- Botón de Modo Toggle -->
-                <button id="btn-toggle-mode" onclick="toggleMode()">✋ Mover Mapa</button>
-                <button id="btn-gather" onclick="gatherResources()">⛏️ Talar/Picar</button>
-                <button id="btn-combat" onclick="openCombat()">⚔️ Buscar Combate</button>
-                <!-- Botón para expandir cuadrícula -->
-                <button id="btn-expand" onclick="expandGrid()">🗺️ Expandir<br><small id="expand-cost">100🪵 100🪨</small></button>
-            </div>
-
-            <div id="build-menu">
-                <button class="build-btn" onclick="selectBuilding('wall')">
-                    🧱 Muro<br><small>10🪵 5🪨</small>
-                </button>
-                <button class="build-btn" onclick="selectBuilding('tower')">
-                    🗼 Torre<br><small>20🪵 15🪨</small>
-                </button>
-                <button class="build-btn" onclick="selectBuilding('archer')">
-                    🏹 Arquero<br><small>10🪵 0🪨</small>
-                </button>
-            </div>
-
-            <div id="combat-overlay" class="hidden">
-                <div class="combat-panel">
-                    <h2>⚔️ Batalla ⚔️</h2>
-                    <div class="health-bars">
-                        <div class="hp-box">
-                            <span>Tu Castillo</span>
-                            <progress id="hp-player" value="100" max="100"></progress>
-                            <span id="hp-player-text">100/100</span>
-                        </div>
-                        <div class="hp-box">
-                            <span>Castillo Enemigo</span>
-                            <progress id="hp-enemy" value="100" max="100"></progress>
-                            <span id="hp-enemy-text">100/100</span>
-                        </div>
-                    </div>
-                    <div id="combat-log">¡Prepárate!</div>
-                    <div class="combat-actions">
-                        <button id="btn-attack" onclick="performAttack()">🗡️ Atacar</button>
-                        <button id="btn-flee" onclick="fleeCombat()">🏃 Retirada</button>
-                    </div>
+            <!-- UI de Modo Combate (Ataque en vivo) -->
+            <div id="combat-ui" class="hidden">
+                <div id="combat-header">
+                    <h2>🔥 ASALTO EN CURSO 🔥</h2>
+                    <p>Toca las zonas exteriores para desplegar tropas</p>
+                    <button onclick="endCombat()">Bandera Blanca (Rendirse)</button>
                 </div>
             </div>
             
