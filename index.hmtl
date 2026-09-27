@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <!-- Configuración para que se vea bien en la pantalla del celular -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Juego Defense Web3</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #2c3e50;
+            overflow: hidden; /* Evita el scroll en móviles */
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+        }
+        /* Interfaz HTML superpuesta sobre el juego (Canvas) */
+        #ui-layer {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            color: white;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            text-shadow: 2px 2px 2px black;
+            pointer-events: none; /* Para que los toques pasen al canvas */
+        }
+    </style>
+    <!-- Cargar Phaser.js -->
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.60.0/dist/phaser.min.js"></script>
+    <!-- Cargar Supabase -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div id="ui-layer">
+        <div id="coins-display">Monedas: <span id="coins-count">0</span></div>
+        <div id="gems-display">Gemas: <span id="gems-count">0</span></div>
+    </div>
+    
+    <!-- Aquí se inyectará el juego -->
+    <div id="game-container"></div>
+
+    <script src="game.js"></script>
+</body>
+</html>
