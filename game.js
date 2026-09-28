@@ -5,7 +5,7 @@ const uiLog = document.getElementById('notification-area');
 function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
-// MAPA ESTILO CLASH OF CLANS (Cuadritos pequeños)
+// MAPA ESTILO CLASH (Cuadritos pequeños)
 const TILE_SIZE = 25; 
 let gridSize = 40; 
 let savedData = JSON.parse(localStorage.getItem('castleBattleSave')) || null;
@@ -15,22 +15,12 @@ let resources = savedData ? savedData.resources : { wood: 500, stone: 500, point
 if (resources.coins === undefined) resources.coins = 0; 
 
 let buildings = savedData ? savedData.buildings : [];
-let maxTroops = 0; let maxCoins = 100;
 
-let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
-let isBuildMode = false; let inCombat = false; let combatOver = false; let frameCount = 0; 
-let mySavedBase = []; let deployedTroops = []; let lasers = [];
-
-let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
-let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
-
-// DEFINICIÓN DE ENTIDADES CON ANCHO (w) Y ALTO (h)
+// DEFINICIÓN DE ENTIDADES CON TAMAÑOS (w, h)
 const entityData = {
     castle: { wood: 1000, stone: 1000, color: '#4a4a4a', emoji: '🏰', maxHp: 1000, w: 4, h: 4 },
-    // EJÉRCITO
     camp: { wood: 200, stone: 150, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5, w: 3, h: 3 },
     barracks: { wood: 300, stone: 200, color: '#d35400', emoji: '⚔️', maxHp: 250, w: 3, h: 3 }, 
-    // RECURSOS
     builder_hut: { wood: 100, stone: 0, color: '#f39c12', emoji: '🏠', maxHp: 100, w: 2, h: 2 },
     lumbermill: { wood: 150, stone: 50, color: '#27ae60', emoji: '🪚', maxHp: 150, w: 3, h: 3 },
     mine: { wood: 50, stone: 150, color: '#95a5a6', emoji: '⛏️', maxHp: 150, w: 3, h: 3 },
@@ -39,14 +29,29 @@ const entityData = {
     vault_wood: { wood: 200, stone: 200, color: '#d35400', emoji: '📦🪵', maxHp: 400, w: 3, h: 3 },
     vault_stone: { wood: 200, stone: 200, color: '#8e44ad', emoji: '📦🪨', maxHp: 400, w: 3, h: 3 },
     vault_coins: { wood: 400, stone: 400, color: '#2ecc71', emoji: '🏦', maxHp: 400, capacityCoins: 500, w: 3, h: 3 }, 
-    // DEFENSAS
-    cannon: { wood: 200, stone: 200, color: '#7f8c8d', emoji: '💣', maxHp: 300, damage: 25, range: 150, w: 3, h: 3 },
+    cannon: { wood: 200, stone: 200, color: '#7f8c8d', emoji: '💣', maxHp: 300, damage: 25, range: 180, w: 3, h: 3 },
     tower: { wood: 250, stone: 250, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 15, range: 250, w: 3, h: 3 },
     wall: { wood: 40, stone: 20, color: '#555', emoji: '🧱', maxHp: 400, w: 1, h: 1 }
 };
 
+// === PARCHE CRÍTICO PARA RECUPERAR TUS EDIFICIOS ANTIGUOS ===
+// Si tus edificios se volvieron invisibles, esto los repara automáticamente.
+buildings.forEach(b => {
+    let data = entityData[b.type] || {};
+    b.w = b.w || data.w || 3; 
+    b.h = b.h || data.h || 3;
+    if (isNaN(b.gridX)) b.gridX = 18;
+    if (isNaN(b.gridY)) b.gridY = 18;
+});
+
+let maxTroops = 0; let maxCoins = 100;
+let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
+let isBuildMode = false; let inCombat = false; let combatOver = false; let frameCount = 0; 
+let mySavedBase = []; let deployedTroops = []; let lasers = [];
+let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
+let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
+
 if (buildings.length === 0) {
-    // Inicia en el centro
     buildings.push({ id: Date.now(), gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp });
     saveGame();
 }
@@ -68,7 +73,7 @@ setInterval(() => {
             if (b.type === 'lumbermill') woodGen += 2;
             if (b.type === 'mine') stoneGen += 2;
             if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
-            b.hp = Math.max(0, b.hp - (b.maxHp / 86400)); // Deterioro pasivo
+            b.hp = Math.max(0, b.hp - (b.maxHp / 86400));
         }
     });
 
@@ -80,7 +85,6 @@ setInterval(() => {
     if (uiNeedsUpdate) { updateUI(); saveGame(); }
 }, 1000);
 
-// LÓGICA DE ACTUALIZACIÓN COMBATE
 function update() {
     frameCount++;
     if (inCombat && !combatOver) {
@@ -92,7 +96,6 @@ function update() {
         deployedTroops.forEach(troop => {
             if (!troop.target || troop.target.hp <= 0) troop.target = getNearestBuilding(troop.x, troop.y);
             if (troop.target) {
-                // Ataca al centro del edificio
                 let tx = troop.target.gridX * TILE_SIZE + (troop.target.w * TILE_SIZE)/2;
                 let ty = troop.target.gridY * TILE_SIZE + (troop.target.h * TILE_SIZE)/2;
                 let dx = tx - troop.x, dy = ty - troop.y; let dist = Math.hypot(dx, dy);
@@ -105,8 +108,7 @@ function update() {
         if (frameCount % 45 === 0) {
             buildings.forEach(b => {
                 if (b.type === 'tower' || b.type === 'cannon') {
-                    let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2;
-                    let by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
+                    let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
                     let target = null, minDist = b.range;
                     deployedTroops.forEach(t => {
                         let dist = Math.hypot(t.x - bx, t.y - by);
@@ -124,34 +126,25 @@ function update() {
 function getNearestBuilding(x, y) {
     let nearest = null, minDist = Infinity;
     buildings.forEach(b => {
-        let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2;
-        let by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
+        let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
         let dist = Math.hypot(bx - x, by - y);
         if (dist < minDist) { minDist = dist; nearest = b; }
     });
     return nearest;
 }
 
-// ZONA TRANSPARENTE DE DESPLIEGUE (1 Cuadrito de margen alrededor de todo)
+// ZONA TRANSPARENTE EN COMBATE
 function isRestrictedZone(gX, gY) {
-    const MARGIN = 1;
     for (let b of buildings) {
-        if (gX >= b.gridX - MARGIN && gX < b.gridX + b.w + MARGIN &&
-            gY >= b.gridY - MARGIN && gY < b.gridY + b.h + MARGIN) {
-            return true;
-        }
+        if (gX >= b.gridX - 1 && gX < b.gridX + b.w + 1 && gY >= b.gridY - 1 && gY < b.gridY + b.h + 1) return true;
     }
     return false;
 }
 
-// COLISIONES PARA CONSTRUCCIÓN
 function isOccupied(gX, gY, w, h, ignoreId = null) {
     for (let b of buildings) {
         if (b.id === ignoreId) continue;
-        if (gX < b.gridX + b.w && gX + w > b.gridX &&
-            gY < b.gridY + b.h && gY + h > b.gridY) {
-            return true;
-        }
+        if (gX < b.gridX + b.w && gX + w > b.gridX && gY < b.gridY + b.h && gY + h > b.gridY) return true;
     }
     return false;
 }
@@ -162,12 +155,11 @@ function draw() {
     ctx.scale(camera.zoom, camera.zoom); ctx.translate(-camera.x, -camera.y);
 
     let mapSize = gridSize * TILE_SIZE;
-    ctx.fillStyle = '#7cb342'; // Verde pasto Clash
-    ctx.fillRect(0, 0, mapSize, mapSize);
+    ctx.fillStyle = '#4c7c2b'; ctx.fillRect(0, 0, mapSize, mapSize);
 
-    // CUADRÍCULAS (Solo en modo construcción)
-    if (isBuildMode) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; ctx.lineWidth = 1; ctx.beginPath();
+    // DIBUJAR CUADRÍCULAS CUANDO SE ESTÁ EDITANDO O CONSTRUYENDO
+    if (isBuildMode || selectedBuildingId || pendingBuildingData) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; ctx.lineWidth = 1; ctx.beginPath();
         for (let x = 0; x <= mapSize; x += TILE_SIZE) { ctx.moveTo(x, 0); ctx.lineTo(x, mapSize); }
         for (let y = 0; y <= mapSize; y += TILE_SIZE) { ctx.moveTo(0, y); ctx.lineTo(mapSize, y); }
         ctx.stroke();
@@ -175,19 +167,16 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // ZONA TRANSPARENTE EN COMBATE
+    // ZONA TRANSPARENTE BLANCA EN COMBATE
     if (inCombat) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)'; // Blanco semi-transparente
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         for (let x = 0; x < gridSize; x++) {
             for (let y = 0; y < gridSize; y++) {
-                if (isRestrictedZone(x, y)) {
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
+                if (isRestrictedZone(x, y)) { ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE); }
             }
         }
     }
 
-    // DIBUJAR EDIFICIOS
     buildings.forEach(b => {
         let px = b.gridX * TILE_SIZE, py = b.gridY * TILE_SIZE;
         let bw = b.w * TILE_SIZE, bh = b.h * TILE_SIZE;
@@ -196,7 +185,7 @@ function draw() {
             ctx.fillStyle = '#333'; ctx.fillRect(px, py, bw, bh);
             ctx.strokeStyle = (selectedBuildingId === b.id) ? '#f1c40f' : 'rgba(0,0,0,0.8)'; 
             ctx.lineWidth = (selectedBuildingId === b.id) ? 4 : 2; ctx.strokeRect(px, py, bw, bh);
-            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillStyle = 'white'; ctx.font = `${Math.min(bw, bh) * 0.5}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText('🏚️', px + bw/2, py + bh/2);
             return; 
         }
@@ -204,7 +193,7 @@ function draw() {
         ctx.fillStyle = b.color; ctx.fillRect(px, py, bw, bh);
         let hpRatio = b.hp / b.maxHp; let perimeter = (bw * 2) + (bh * 2);
 
-        if (isBuildMode && selectedBuildingId === b.id) {
+        if (selectedBuildingId === b.id) {
             ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.strokeRect(px, py, bw, bh);
         } else {
             ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2; ctx.strokeRect(px, py, bw, bh);
@@ -221,7 +210,6 @@ function draw() {
         }
     });
 
-    // CAJA DE CONSTRUCCIÓN SEMITRANSPARENTE (Drag & Drop)
     if (pendingBuildingData && pGridX >= 0 && pGridY >= 0) {
         let px = pGridX * TILE_SIZE; let py = pGridY * TILE_SIZE;
         let bw = pendingBuildingData.w * TILE_SIZE; let bh = pendingBuildingData.h * TILE_SIZE;
@@ -254,7 +242,7 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR MULTI-TÁCTIL (ZOOM POR PELLIZCO Y PANEO) ---
+// --- MOTOR MULTI-TÁCTIL (PANEO + ZOOM PELLIZCO ESTABLE) ---
 let pointers = new Map(); let initialCam = { x: 0, y: 0 }; let startDragPan = { x: 0, y: 0 }; 
 let hasMoved = false; let isCanvasTouch = false; 
 let initialPinchDist = null; let initialZoom = 1;
@@ -301,7 +289,6 @@ window.addEventListener('pointermove', e => {
         let dx = midX - startDragPan.x, dy = midY - startDragPan.y; hasMoved = true;
         camera.x = initialCam.x - (dx / camera.zoom); camera.y = initialCam.y - (dy / camera.zoom);
         
-        // CÁLCULO DE ZOOM (Pellizco)
         let currentDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
         if (initialPinchDist) {
             let scaleRatio = currentDist / initialPinchDist;
@@ -323,12 +310,7 @@ window.addEventListener('pointerup', e => {
             else deployTroop(worldX, worldY);
         } else if (!pendingBuildingData) {
             let clickedBuilding = buildings.find(b => gX >= b.gridX && gX < b.gridX + b.w && gY >= b.gridY && gY < b.gridY + b.h);
-            
-            // Si tocas el mapa, y estabas en la tienda/build mode pero no tenias nada, cierra la tienda.
-            if (!clickedBuilding && !selectedBuildingId && isBuildMode) { exitBuildMode(); }
-            // Selección
-            else if (clickedBuilding) { enterBuildMode(); selectExistingBuilding(clickedBuilding.id); } 
-            else if (selectedBuildingId) { cancelEdit(); }
+            if (clickedBuilding) selectExistingBuilding(clickedBuilding.id); else if (selectedBuildingId) cancelEdit();
         }
     }
     if (pointers.size === 0) isCanvasTouch = false;
@@ -337,14 +319,12 @@ window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if
 
 // --- GESTIÓN DE TIENDA Y CONSTRUCCIÓN ---
 function openShop() { 
-    isBuildMode = true;
-    document.getElementById('main-hud').classList.add('hidden'); 
-    document.getElementById('shop-ui').classList.remove('hidden'); 
+    document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); 
     document.getElementById('shop-wood').innerText = Math.floor(resources.wood);
     document.getElementById('shop-stone').innerText = Math.floor(resources.stone);
     document.getElementById('shop-coins').innerText = Math.floor(resources.coins);
 }
-function closeShop() { isBuildMode = false; document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
+function closeShop() { document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
 
 function switchShopTab(tabId) {
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -357,20 +337,15 @@ function selectBuilding(type) {
     if(selectedBuildingId) cancelEdit();
     pendingBuildingType = type; pendingBuildingData = entityData[type];
     pGridX = Math.floor(camera.x / TILE_SIZE); pGridY = Math.floor(camera.y / TILE_SIZE);
-    document.getElementById('shop-ui').classList.add('hidden'); 
-    document.getElementById('placement-controls').classList.remove('hidden');
+    document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('placement-controls').classList.remove('hidden');
+    isBuildMode = true;
 }
-
-function enterBuildMode() { isBuildMode = true; } // Helper
-function exitBuildMode() { isBuildMode = false; cancelPlacement(); cancelEdit(); document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
 
 function cancelPlacement() {
     if (isRelocating && relocatingBuilding) { buildings.push(relocatingBuilding); isRelocating = false; relocatingBuilding = null; }
     pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
     document.getElementById('placement-controls').classList.add('hidden');
-    selectedBuildingId = null; 
-    document.getElementById('main-hud').classList.remove('hidden');
-    isBuildMode = false;
+    selectedBuildingId = null; document.getElementById('main-hud').classList.remove('hidden'); isBuildMode = false;
 }
 
 function confirmPlacement() {
@@ -396,7 +371,7 @@ function confirmPlacement() {
     updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- EDICIÓN (REPARAR, ENTRENAR, ETC) ---
+// --- EDICIÓN ---
 function getRepairCost(b) {
     let data = entityData[b.type]; let ratio = 1 - (b.hp / b.maxHp);
     return { wood: Math.ceil((data.wood || 0) * ratio), stone: Math.ceil((data.stone || 0) * ratio) };
@@ -417,7 +392,6 @@ function selectExistingBuilding(id) {
         document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.wood}🪵 ${data.stone}🪨</small>`;
     } else {
         document.getElementById('edit-controls').classList.remove('hidden');
-        
         let btnTrain = document.getElementById('btn-train-troop');
         if (b.type === 'barracks') { btnTrain.style.display = 'block'; } else { btnTrain.style.display = 'none'; }
 
@@ -430,7 +404,7 @@ function selectExistingBuilding(id) {
 }
 
 function cancelEdit() {
-    selectedBuildingId = null; isBuildMode = false;
+    selectedBuildingId = null;
     document.getElementById('edit-controls').classList.add('hidden'); document.getElementById('ruin-controls').classList.add('hidden');
     document.getElementById('destroy-controls').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden');
 }
@@ -455,8 +429,7 @@ function initDestroy() { document.getElementById('edit-controls').classList.add(
 function confirmDestroy() {
     let b = buildings.find(x => x.id === selectedBuildingId);
     if (b) {
-        let data = entityData[b.type];
-        let refundWood = Math.floor((data.wood || 0) * 0.4); let refundStone = Math.floor((data.stone || 0) * 0.4);
+        let refundWood = Math.floor((entityData[b.type].wood || 0) * 0.4); let refundStone = Math.floor((entityData[b.type].stone || 0) * 0.4);
         resources.wood += refundWood; resources.stone += refundStone; buildings = buildings.filter(x => x.id !== selectedBuildingId);
         updateCapacity(); updateUI(); saveGame(); showNotification(`Destruido: +${refundWood}🪵 +${refundStone}🪨 devueltos`);
     }
@@ -468,6 +441,7 @@ function startRelocate() {
     isRelocating = true; relocatingBuilding = b; pendingBuildingType = b.type; pendingBuildingData = entityData[b.type];
     pGridX = b.gridX; pGridY = b.gridY; buildings = buildings.filter(x => x.id !== selectedBuildingId);
     document.getElementById('edit-controls').classList.add('hidden'); document.getElementById('placement-controls').classList.remove('hidden');
+    isBuildMode = true;
 }
 
 function saveGame() { if (!inCombat) localStorage.setItem('castleBattleSave', JSON.stringify({ resources, buildings, gridSize, expansionCost, lastSaveTime: Date.now() })); }
@@ -479,12 +453,11 @@ function updateCapacity() {
 
 function trainTroop() {
     updateCapacity();
-    if (resources.troops >= maxTroops) return showNotification(`Campamentos llenos (${maxTroops} max). Construye más campamentos.`);
+    if (resources.troops >= maxTroops) return showNotification(`Campamentos llenos (${maxTroops} max). Construye más.`);
     if (resources.wood >= 25) { resources.wood -= 25; resources.troops++; updateUI(); saveGame(); showNotification("¡Bárbaro entrenado!"); cancelEdit();
     } else showNotification("Falta madera");
 }
 
-// --- SISTEMA DE COMBATE ---
 function startCombatMatch() {
     if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en un Cuartel!");
     mySavedBase = JSON.parse(JSON.stringify(buildings)); 
@@ -531,9 +504,6 @@ function updateUI() {
     document.getElementById('res-troops').innerText = `${resources.troops}/${maxTroops}`; document.getElementById('res-points').innerText = resources.points;
 }
 
-function changeZoom(amount) { camera.zoom = Math.max(0.4, Math.min(camera.zoom + amount, 3.0)); }
-function showNotification(msg) { uiLog.innerText = msg; setTimeout(() => uiLog.innerText = "", 2500); }
-
 function toggleFullScreen() {
     let doc = window.document; let docEl = doc.documentElement;
     let requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
@@ -549,4 +519,3 @@ function toggleFullScreen() {
 }
 
 updateCapacity(); updateUI();
-setTimeout(() => { if(!inCombat && buildings.length > 0) showNotification("💡 Toca la Tienda para añadir estructuras."); }, 2000);
