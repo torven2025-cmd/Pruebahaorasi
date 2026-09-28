@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle 7.0 - Drag & Drop</title>
+    <title>Castle Battle 9.0 - Monedas y Tienda</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -11,9 +11,11 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="ui-layer">
+            <!-- Barra de Recursos (Añadidas Monedas) -->
             <div id="resource-bar">
                 <div class="resource" title="Madera">🪵 <span id="res-wood">0</span></div>
                 <div class="resource" title="Piedra">🪨 <span id="res-stone">0</span></div>
+                <div class="resource" title="Monedas">🪙 <span id="res-coins">0/100</span></div>
                 <div class="resource" title="Bárbaros">🗡️ <span id="res-troops">0</span></div>
                 <div class="resource" title="Puntos">🏆 <span id="res-points">0</span></div>
             </div>
@@ -25,23 +27,33 @@
                     <button onclick="changeZoom(-0.2)">🔍-</button>
                 </div>
                 <div id="action-menu">
-                    <button class="action-btn build-mode-btn" onclick="enterBuildMode()">🔨 Modo Construir</button>
-                    <button class="action-btn" onclick="trainTroop()">Entrenar Bárbaro<br><small>10🪵</small></button>
-                    <button class="action-btn attack-btn" onclick="startCombatMatch()">⚔️ Atacar Base</button>
+                    <button class="action-btn build-mode-btn" onclick="enterBuildMode()">🔨 Construir</button>
+                    <button class="action-btn" onclick="trainTroop()">Bárbaro<br><small>10🪵</small></button>
+                    <button class="action-btn attack-btn" onclick="startCombatMatch()">⚔️ Atacar</button>
+                    <!-- Nuevos Botones -->
+                    <button class="action-btn shop-btn" onclick="openShop()">🏪 Tienda</button>
+                    <button class="action-btn mission-btn" onclick="showNotification('📜 Misiones: ¡Próximamente!')">📜 Misiones</button>
                 </div>
             </div>
 
-            <!-- UI MODO CONSTRUCCIÓN (Oculta por defecto) -->
+            <!-- UI MODO CONSTRUCCIÓN -->
             <div id="build-ui" class="hidden">
                 <button id="btn-exit-build" onclick="exitBuildMode()">Salir del Modo</button>
                 
-                <!-- Carrusel horizontal de edificios -->
                 <div id="build-tray">
+                    <!-- Nuevos Edificios -->
+                    <button class="build-item" onclick="selectBuilding('goldmine')">
+                        <span class="icon">⛏️🟡</span><br>Mina de Oro<br><small>50🪵 50🪨</small>
+                    </button>
+                    <button class="build-item" onclick="selectBuilding('vault')">
+                        <span class="icon">🏦</span><br>Almacén 🪙<br><small>100🪵 100🪨</small>
+                    </button>
+                    <!-- Edificios Clásicos -->
                     <button class="build-item" onclick="selectBuilding('lumbermill')">
                         <span class="icon">🪚</span><br>Aserradero<br><small>20🪵 10🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('mine')">
-                        <span class="icon">⛏️</span><br>Mina<br><small>10🪵 20🪨</small>
+                        <span class="icon">⛏️</span><br>Mina Piedra<br><small>10🪵 20🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('camp')">
                         <span class="icon">⛺</span><br>Campamento<br><small>50🪵 30🪨</small>
@@ -54,7 +66,6 @@
                     </button>
                 </div>
 
-                <!-- Botones de Confirmación (Aparecen al seleccionar un edificio) -->
                 <div id="placement-controls" class="hidden">
                     <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
                     <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
@@ -65,8 +76,24 @@
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
-                    <p>Toca los bordes para soltar bárbaros</p>
+                    <p>¡Destruye para robar monedas!</p>
                     <button onclick="endCombat()">Rendirse</button>
+                </div>
+            </div>
+
+            <!-- UI DE TIENDA (Modal) -->
+            <div id="shop-ui" class="hidden">
+                <div class="shop-panel">
+                    <h2>🏪 Tienda del Reino</h2>
+                    <p>Mejora tu base usando Monedas</p>
+                    <div class="shop-items">
+                        <button onclick="buyExpansion()">
+                            🗺️ Expandir Territorio (+5x5)<br>
+                            <small>Costo: <span id="expansion-cost-text">100</span> 🪙</small>
+                        </button>
+                        <!-- Aquí se pueden agregar más compras en el futuro -->
+                    </div>
+                    <button class="close-btn" onclick="closeShop()">Cerrar Tienda</button>
                 </div>
             </div>
             
