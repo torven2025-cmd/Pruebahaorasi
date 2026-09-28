@@ -5,27 +5,12 @@ const uiLog = document.getElementById('notification-area');
 function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
 window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
-// MAPA ESTILO CLASH (Cuadritos pequeños)
 const TILE_SIZE = 25; 
 let gridSize = 40; 
-let expansionCost = 100;
 
-// SIN GUARDADO LOCAL (Evita bugs en Modo Incógnito)
-let resources = { wood: 500, stone: 500, points: 0, troops: 5, coins: 0 };
+// SIN LOCALSTORAGE - Ideal para testear en modo incógnito sin que se rompa
+let resources = { wood: 1000, stone: 1000, points: 0, troops: 0, coins: 0 };
 let buildings = [];
-let maxTroops = 0; let maxCoins = 100;
-
-let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
-let isBuildMode = false; let inCombat = false; let frameCount = 0; 
-let mySavedBase = []; let deployedTroops = []; let lasers = [];
-
-// ESTADOS DEL COMBATE
-let combatPhase = 'none'; // 'none', 'prep', 'battle', 'end'
-let combatSeconds = 0;
-let combatTimerInterval = null;
-
-let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
-let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
 
 const entityData = {
     castle: { wood: 1000, stone: 1000, color: '#4a4a4a', emoji: '🏰', maxHp: 1000, w: 4, h: 4 },
@@ -44,14 +29,29 @@ const entityData = {
     wall: { wood: 40, stone: 20, color: '#555', emoji: '🧱', maxHp: 400, w: 1, h: 1 }
 };
 
-// Crear base inicial si está vacía
+let maxTroops = 0; let maxCoins = 100;
+let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
+let isBuildMode = false; let frameCount = 0; 
+let mySavedBase = []; let deployedTroops = []; let lasers = [];
+
+// ESTADOS DEL COMBATE CON TEMPORIZADORES
+let inCombat = false;
+let combatPhase = 'none'; // 'none', 'prep', 'battle', 'end'
+let combatSeconds = 0;
+let combatTimerInterval = null;
+
+let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
+let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
+
+// Base inicial
 if (buildings.length === 0) {
-    buildings.push({ id: Date.now(), gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp });
-    buildings.push({ id: Date.now()+1, gridX: 14, gridY: 18, type: 'camp', ...entityData.camp, hp: entityData.camp.maxHp });
+    buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp });
+    buildings.push({ id: 2, gridX: 14, gridY: 18, type: 'camp', ...entityData.camp, hp: entityData.camp.maxHp });
+    buildings.push({ id: 3, gridX: 23, gridY: 18, type: 'barracks', ...entityData.barracks, hp: entityData.barracks.maxHp });
     updateCapacity();
 }
 
-// Economía Pasiva Online
+// Economía Pasiva 
 let goldGenTimer = 0;
 setInterval(() => {
     if (inCombat) return;
@@ -64,18 +64,16 @@ setInterval(() => {
             if (b.type === 'lumbermill') woodGen += 2;
             if (b.type === 'mine') stoneGen += 2;
             if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
-            b.hp = Math.max(0, b.hp - (b.maxHp / 86400)); // Deterioro pasivo de 24h
         }
     });
 
     if (goldGenTimer >= 3) goldGenTimer = 0;
-    
     if (woodGen > 0 || stoneGen > 0) { resources.wood += woodGen; resources.stone += stoneGen; }
     if (goldGen > 0 && resources.coins < maxCoins) { resources.coins = Math.min(resources.coins + goldGen, maxCoins); }
     updateUI();
 }, 1000);
 
-// BUCLE DE COMBATE EN TIEMPO REAL
+// BUCLE DE COMBATE
 function update() {
     frameCount++;
     if (inCombat && combatPhase === 'battle') {
@@ -91,9 +89,10 @@ function update() {
                 let tx = troop.target.gridX * TILE_SIZE + (troop.target.w * TILE_SIZE)/2;
                 let ty = troop.target.gridY * TILE_SIZE + (troop.target.h * TILE_SIZE)/2;
                 let dx = tx - troop.x, dy = ty - troop.y; let dist = Math.hypot(dx, dy);
+                
                 if (dist > (TILE_SIZE + troop.radius)) {
                     troop.x += (dx / dist) * troop.speed; troop.y += (dy / dist) * troop.speed;
-                } else if (frameCount % 60 === 0) troop.target.hp -= troop.damage;
+                } else if (frameCount % 60 === 0) troop.target.hp -= troop.damage; // El daño se aplica y la vida baja
             }
         });
 
@@ -126,13 +125,10 @@ function getNearestBuilding(x, y) {
     return nearest;
 }
 
-// ZONA TRANSPARENTE EN COMBATE (Margen de 1 cuadro)
+// ZONA TRANSPARENTE EN COMBATE (Margen de 1 cuadrito alrededor)
 function isRestrictedZone(gX, gY) {
     for (let b of buildings) {
-        if (gX >= b.gridX - 1 && gX < b.gridX + b.w + 1 &&
-            gY >= b.gridY - 1 && gY < b.gridY + b.h + 1) {
-            return true;
-        }
+        if (gX >= b.gridX - 1 && gX < b.gridX + b.w + 1 && gY >= b.gridY - 1 && gY < b.gridY + b.h + 1) return true;
     }
     return false;
 }
@@ -140,10 +136,7 @@ function isRestrictedZone(gX, gY) {
 function isOccupied(gX, gY, w, h, ignoreId = null) {
     for (let b of buildings) {
         if (b.id === ignoreId) continue;
-        if (gX < b.gridX + b.w && gX + w > b.gridX &&
-            gY < b.gridY + b.h && gY + h > b.gridY) {
-            return true;
-        }
+        if (gX < b.gridX + b.w && gX + w > b.gridX && gY < b.gridY + b.h && gY + h > b.gridY) return true;
     }
     return false;
 }
@@ -165,14 +158,12 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // ZONA TRANSPARENTE DE COMBATE
+    // DIBUJAR ZONA TRANSPARENTE AL ATACAR
     if (inCombat) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         for (let x = 0; x < gridSize; x++) {
             for (let y = 0; y < gridSize; y++) {
-                if (isRestrictedZone(x, y)) {
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
+                if (isRestrictedZone(x, y)) { ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE); }
             }
         }
     }
@@ -228,12 +219,12 @@ function draw() {
         ctx.strokeRect(px, py, bw, bh); ctx.setLineDash([]);
     }
 
-    // TROPAS MEJORADAS VISUALMENTE
+    // DIBUJAR TROPAS
     deployedTroops.forEach(t => {
         ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = 'white'; ctx.font = `12px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🗡️', t.x, t.y);
-        ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 8, t.y - 15, 16 * (t.hp/100), 4);
+        ctx.fillStyle = 'white'; ctx.font = `14px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🗡️', t.x, t.y);
+        ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 10, t.y - 18, 20 * (t.hp/100), 4);
     });
 
     lasers.forEach(l => {
@@ -245,10 +236,9 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR MULTI-TÁCTIL (ZOOM POR PELLIZCO Y PANEO) ---
+// --- MOTOR MULTI-TÁCTIL (ZOOM POR PELLIZCO ESTABLE) ---
 let pointers = new Map(); let initialCam = { x: 0, y: 0 }; let startDragPan = { x: 0, y: 0 }; 
-let hasMoved = false; let isCanvasTouch = false; 
-let initialPinchDist = null; let initialZoom = 1;
+let hasMoved = false; let isCanvasTouch = false; let initialPinchDist = null; let initialZoom = 1;
 
 function updatePointers(e) { pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); }
 
@@ -272,7 +262,7 @@ canvas.addEventListener('pointerdown', e => {
 });
 
 window.addEventListener('pointermove', e => {
-    if (!pointers.has(e.pointerId)) return; if (!isCanvasTouch) return; updatePointers(e);
+    if (!pointers.has(e.pointerId) || !isCanvasTouch) return; updatePointers(e);
 
     if (pointers.size === 1) {
         let pts = Array.from(pointers.values());
@@ -309,28 +299,27 @@ window.addEventListener('pointerup', e => {
         let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
 
         if (inCombat && combatPhase !== 'end') {
-            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega en zona verde.");
+            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega en la zona verde.");
             else deployTroop(worldX, worldY);
         } else if (!pendingBuildingData) {
             let clickedBuilding = buildings.find(b => gX >= b.gridX && gX < b.gridX + b.w && gY >= b.gridY && gY < b.gridY + b.h);
-            if (!clickedBuilding && !selectedBuildingId && isBuildMode) { exitBuildMode(); }
+            if (!clickedBuilding && !selectedBuildingId && isBuildMode) exitBuildMode();
             else if (clickedBuilding) { enterBuildMode(); selectExistingBuilding(clickedBuilding.id); } 
-            else if (selectedBuildingId) { cancelEdit(); }
+            else if (selectedBuildingId) cancelEdit();
         }
     }
     if (pointers.size === 0) isCanvasTouch = false;
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
-
-// --- SISTEMA DE COMBATE CON TEMPORIZADORES ---
+// --- SISTEMA DE COMBATE (Con Temporizadores y Redirección Exacta) ---
 function startCombatMatch() {
-    if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en un Cuartel!");
+    if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en el Cuartel!");
     
-    // Guardar una copia profunda para poder restaurarla al rendirse/perder
+    // Guardar base para restaurarla luego
     mySavedBase = JSON.parse(JSON.stringify(buildings)); 
     
-    // Crear base enemiga de prueba
+    // Base enemiga con Castillo
     buildings = [
         { id: 1, gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp },
         { id: 4, gridX: 18, gridY: 14, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
@@ -340,9 +329,8 @@ function startCombatMatch() {
     inCombat = true; combatOver = false; deployedTroops = []; lasers = [];
     document.getElementById('main-hud').classList.add('hidden'); 
     document.getElementById('combat-ui').classList.remove('hidden');
-    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
+    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.0;
 
-    // Iniciar Temporizador de Preparación (10s)
     combatPhase = 'prep';
     combatSeconds = 10;
     document.getElementById('combat-status-text').innerText = "El ataque comienza en:";
@@ -378,8 +366,7 @@ function startBattlePhase() {
 }
 
 function updateCombatTimerUI() {
-    let m = Math.floor(combatSeconds / 60);
-    let s = combatSeconds % 60;
+    let m = Math.floor(combatSeconds / 60); let s = combatSeconds % 60;
     document.getElementById('combat-timer').innerText = m + ":" + (s < 10 ? "0" + s : s);
 }
 
@@ -387,14 +374,10 @@ function autoDeployTroops() {
     let boundary = gridSize * TILE_SIZE;
     while(resources.troops > 0) {
         resources.troops--;
-        let x = 0, y = 0;
-        if(Math.random() > 0.5) {
-            x = Math.random() > 0.5 ? 25 : boundary - 25;
-            y = Math.random() * boundary;
-        } else {
-            x = Math.random() * boundary;
-            y = Math.random() > 0.5 ? 25 : boundary - 25;
-        }
+        let x, y, attempts = 0;
+        do {
+            x = Math.random() * boundary; y = Math.random() * boundary; attempts++;
+        } while (isRestrictedZone(Math.floor(x/TILE_SIZE), Math.floor(y/TILE_SIZE)) && attempts < 50);
         deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
     }
     updateUI();
@@ -402,39 +385,37 @@ function autoDeployTroops() {
 
 function deployTroop(x, y) {
     if (resources.troops <= 0) return;
-    if (combatPhase === 'prep') startBattlePhase(); // Si colocas antes de 10s, empieza el ataque
-    
+    if (combatPhase === 'prep') startBattlePhase();
     resources.troops--; updateUI();
     deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
 }
 
 function resolveCombat(type) {
     if (combatPhase === 'end') return;
-    combatPhase = 'end';
+    combatPhase = 'end'; combatOver = true;
     if(combatTimerInterval) clearInterval(combatTimerInterval);
     
-    // Las tropas que sobrevivieron en el mapa + las que no usaste
+    // Regresan las tropas vivas y las que no soltaste
     let surviving = deployedTroops.length + resources.troops; 
     resources.troops = Math.min(maxTroops, surviving);
     
     if (type === 'win') {
         let lootedCoins = 50; resources.wood += 250; resources.stone += 250; resources.points += 20; 
         resources.coins = Math.min(resources.coins + lootedCoins, maxCoins);
-        showNotification(`¡VICTORIA! 250🪵 250🪨 ${lootedCoins}🪙\nRegresan: ${surviving} 🗡️`); 
+        showNotification(`¡VICTORIA!\nRegresan: ${surviving} 🗡️`); 
     } else if (type === 'lose' || type === 'lose_time') { 
-        showNotification(`DERROTA... El Castillo sobrevivió.\nRegresan: ${surviving} 🗡️`);
+        showNotification(`DERROTA...\nRegresan: ${surviving} 🗡️`);
     } else if (type === 'surrender') { 
         showNotification(`TE RENDISTE.\nRegresan: ${surviving} 🗡️`); 
     }
-    updateUI(); setTimeout(endCombat, 3000);
+    updateUI(); setTimeout(endCombat, 2500);
 }
 
 function surrender() { resolveCombat('surrender'); }
 
 function endCombat() {
     inCombat = false; combatOver = false; combatPhase = 'none'; deployedTroops = []; lasers = []; 
-    
-    // RESTAURAR BASE PROFUNDAMENTE Y CENTRAR CÁMARA
+    // Restaurar base vieja profunda
     buildings = JSON.parse(JSON.stringify(mySavedBase)); 
     updateCapacity(); 
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.2;
@@ -444,19 +425,13 @@ function endCombat() {
     updateUI();
 }
 
-
 // --- GESTIÓN DE TIENDA Y CONSTRUCCIÓN ---
-function openShop() { 
-    isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); 
-    document.getElementById('shop-wood').innerText = Math.floor(resources.wood); document.getElementById('shop-stone').innerText = Math.floor(resources.stone); document.getElementById('shop-coins').innerText = Math.floor(resources.coins);
-}
+function openShop() { isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('shop-wood').innerText = Math.floor(resources.wood); document.getElementById('shop-stone').innerText = Math.floor(resources.stone); document.getElementById('shop-coins').innerText = Math.floor(resources.coins); }
 function closeShop() { isBuildMode = false; document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
 
 function switchShopTab(tabId) {
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    event.currentTarget.classList.add('active');
-    document.querySelectorAll('.shop-grid').forEach(grid => grid.classList.add('hidden'));
-    document.getElementById('tab-' + tabId).classList.remove('hidden');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active')); event.currentTarget.classList.add('active');
+    document.querySelectorAll('.shop-grid').forEach(grid => grid.classList.add('hidden')); document.getElementById('tab-' + tabId).classList.remove('hidden');
 }
 
 function selectBuilding(type) {
@@ -486,9 +461,7 @@ function confirmPlacement() {
         relocatingBuilding.hp = Math.max(0, relocatingBuilding.hp - dmg);
         relocatingBuilding.gridX = pGridX; relocatingBuilding.gridY = pGridY;
         buildings.push(relocatingBuilding); isRelocating = false; relocatingBuilding = null;
-        
-        showNotification("Estructura reubicada (-5% HP)");
-        pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
+        showNotification("Estructura reubicada (-5% HP)"); pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
         document.getElementById('placement-controls').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden');
         selectedBuildingId = null; isBuildMode = false; return;
     }
@@ -496,7 +469,6 @@ function confirmPlacement() {
     if (resources.wood < pendingBuildingData.wood || resources.stone < pendingBuildingData.stone) return showNotification("Recursos insuficientes");
     resources.wood -= pendingBuildingData.wood; resources.stone -= pendingBuildingData.stone;
     buildings.push({ id: Date.now(), gridX: pGridX, gridY: pGridY, type: pendingBuildingType, ...pendingBuildingData, hp: pendingBuildingData.maxHp });
-    
     updateCapacity(); updateUI(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
@@ -521,10 +493,8 @@ function selectExistingBuilding(id) {
         document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.wood}🪵 ${data.stone}🪨</small>`;
     } else {
         document.getElementById('edit-controls').classList.remove('hidden');
-        
         let btnTrain = document.getElementById('btn-train-troop');
         if (b.type === 'barracks') { btnTrain.style.display = 'block'; } else { btnTrain.style.display = 'none'; }
-
         let btnRepair = document.getElementById('btn-repair');
         if (b.hp < b.maxHp) {
             let cost = getRepairCost(b); btnRepair.style.display = 'block';
@@ -599,15 +569,11 @@ function toggleFullScreen() {
     let doc = window.document; let docEl = doc.documentElement;
     let requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
     let cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
-
     if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
-        requestFullScreen.call(docEl).then(() => {
-            if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(e => console.log(e)); }
-        }).catch(err => { showNotification(`Error: ${err.message}`); });
+        requestFullScreen.call(docEl).then(() => { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(e => console.log(e)); } }).catch(err => { showNotification(`Error: ${err.message}`); });
     } else {
         cancelFullScreen.call(doc); if (screen.orientation && screen.orientation.unlock) { screen.orientation.unlock(); }
     }
 }
 
 updateCapacity(); updateUI();
-setTimeout(() => { if(!inCombat && buildings.length > 0) showNotification("💡 Toca la Tienda para añadir estructuras."); }, 2000);
