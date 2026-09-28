@@ -2,219 +2,338 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Menús y Mejoras</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reinos de Ceniza</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
-    <div id="rotate-device-screen">
-        <div class="rotate-content">
-            <span class="rotate-icon">📱➡️🖥️</span>
-            <h2>Gira tu dispositivo</h2>
-            <p>Castle Battle se juega en modo horizontal.</p>
-        </div>
+
+<header class="topbar">
+    <div class="logo">⚔️ REINOS DE CENIZA</div>
+
+    <div class="resources">
+        <div class="resource wood">🌲 <span id="wood">0</span></div>
+        <div class="resource stone">🪨 <span id="stone">0</span></div>
+        <div class="resource iron">⛓️ <span id="iron">0</span></div>
+        <div class="resource gold">🪙 <span id="gold">0</span></div>
+        <div class="resource points">🏆 <span id="points">0</span></div>
     </div>
+</header>
 
-    <div id="game-container">
-        <canvas id="gameCanvas"></canvas>
-        
-        <div id="ui-layer">
-            
-            <div id="main-hud">
-                <div id="top-left-controls">
-                    <button class="icon-btn" onclick="toggleFullScreen()" id="btn-fs" title="Pantalla Completa">🔲</button>
+<main>
+
+    <!-- POBLADO -->
+    <section id="villageScreen" class="screen active">
+
+        <div class="section-title">
+            <div>
+                <h1>Tu reino</h1>
+                <p>Construye, recolecta recursos y prepara tus defensas.</p>
+            </div>
+
+            <button class="battle-button" onclick="openBattle()">
+                ⚔️ BUSCAR ENEMIGO
+            </button>
+        </div>
+
+        <div class="game-area">
+
+            <div class="terrain">
+
+                <div class="terrain-title">
+                    <span>🌍 Territorio de jugador</span>
+                    <span id="dayCounter">Día 1</span>
                 </div>
 
-                <div id="ui-top-right">
-                    <div class="res-pill pill-gold">
-                        <div class="res-value" id="res-gold">0/1000</div>
-                        <div class="res-icon">🪙</div>
-                    </div>
-                    <div class="res-pill pill-elixir">
-                        <div class="res-value" id="res-elixir">0/1000</div>
-                        <div class="res-icon">💧</div>
-                    </div>
-                    <div class="res-pill pill-gems">
-                        <div class="res-value" id="res-gems">0</div>
-                        <div class="res-icon">💎</div>
-                    </div>
-                    <div class="res-pill pill-troops">
-                        <div class="res-value" id="res-troops">0/0</div>
-                        <div class="res-icon">🗡️</div>
-                    </div>
+                <!-- CASTILLO -->
+                <div
+                    id="castle"
+                    class="building castle"
+                    onclick="showBuildingInfo('castle')"
+                >
+                    <div class="building-level" id="castleLevel">Nv. 1</div>
+                    🏰
+                    <span>Castillo</span>
                 </div>
 
-                <button id="btn-shop-hud" class="corner-btn" onclick="openShop()">
-                    <div class="btn-icon">🔨</div><span>Tienda</span>
-                </button>
+                <!-- ARQUERO -->
+                <div
+                    id="archer"
+                    class="building archer"
+                    onclick="showBuildingInfo('archer')"
+                >
+                    🏹
+                    <span>Arquero</span>
+                </div>
+
+                <!-- RECURSOS -->
+                <div class="resource-node tree tree1" onclick="collectResource('wood', 20, this)">
+                    🌳
+                </div>
+
+                <div class="resource-node tree tree2" onclick="collectResource('wood', 20, this)">
+                    🌲
+                </div>
+
+                <div class="resource-node tree tree3" onclick="collectResource('wood', 25, this)">
+                    🌳
+                </div>
+
+                <div class="resource-node rock rock1" onclick="collectResource('stone', 15, this)">
+                    🪨
+                </div>
+
+                <div class="resource-node rock rock2" onclick="collectResource('stone', 20, this)">
+                    🪨
+                </div>
+
+                <div class="resource-node iron iron1" onclick="collectResource('iron', 10, this)">
+                    ⛏️
+                </div>
+
+                <div class="resource-node iron iron2" onclick="collectResource('iron', 15, this)">
+                    ⛏️
+                </div>
+
+                <!-- SUELO -->
+                <div class="road road1"></div>
+                <div class="road road2"></div>
+
             </div>
 
-            <!-- CONTROLES DE COLOCACIÓN -->
-            <div id="placement-controls" class="hidden">
-                <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
-                <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
-            </div>
+            <aside class="panel">
 
-            <!-- CONTROLES DE EDICIÓN RÁPIDA -->
-            <div id="edit-controls" class="hidden">
-                <button id="btn-upgrade" onclick="openUpgradeModal()" style="display:none;">✨ Mejorar</button>
-                <button id="btn-train-troop" onclick="openTrainModal()" style="display:none;">🗡️ Entrenar</button>
-                <button id="btn-repair" onclick="repairBuilding()">🔨 Reparar</button>
-                <button id="btn-relocate" onclick="startRelocate()">🔄 Reubicar</button>
-                <button id="btn-destroy-init" onclick="initDestroy()">💥 Destruir</button>
-                <button id="btn-cancel-edit" onclick="cancelEdit()">❌ Salir</button>
-            </div>
+                <div class="panel-box">
+                    <h2>📜 Construcción</h2>
 
-            <div id="ruin-controls" class="hidden">
-                <button id="btn-rebuild" onclick="rebuildBuilding()">🏗️ Reconstruir</button>
-                <button id="btn-destroy-ruin" onclick="initDestroy()">💥 Limpiar Restos</button>
-                <button id="btn-cancel-ruin" onclick="cancelEdit()">❌ Salir</button>
-            </div>
+                    <button onclick="upgradeCastle()">
+                        🏰 Mejorar castillo
+                        <small id="castleCost">100 🌲 / 50 🪨</small>
+                    </button>
 
-            <div id="destroy-controls" class="hidden">
-                <button id="btn-cancel-destroy" onclick="cancelEdit()">❌ Cancelar</button>
-                <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
-            </div>
+                    <button onclick="buildArcher()">
+                        🏹 Reclutar arquero
+                        <small>50 🌲 / 20 ⛓️</small>
+                    </button>
 
-            <!-- NUEVO: MODAL DE MEJORA -->
-            <div id="upgrade-modal" class="hidden">
-                <div class="upgrade-panel">
-                    <button class="close-btn" onclick="closeUpgradeModal()">X</button>
-                    <h2 id="upgrade-title">¿Mejorar al nivel X?</h2>
-                    
-                    <div class="upgrade-stats-container">
-                        <div class="stat-box">
-                            <span class="stat-icon">❤️</span>
-                            <div class="stat-details">
-                                <p>Vida:</p>
-                                <b id="upg-hp">100 <span>+ 50</span></b>
-                            </div>
-                        </div>
-                        <div class="stat-box">
-                            <span class="stat-icon">📦</span>
-                            <div class="stat-details">
-                                <p id="upg-cap-title">Capacidad:</p>
-                                <b id="upg-cap">1000 <span>+ 500</span></b>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="upgrade-reqs-section" class="hidden">
-                        <h3>Se requiere para mejorar:</h3>
-                        <div id="upgrade-reqs-list" class="req-grid">
-                            <!-- Los requisitos se llenan por JS -->
-                        </div>
-                    </div>
-
-                    <button id="btn-confirm-upgrade" class="upgrade-confirm-btn" onclick="confirmUpgrade()">
-                        <span id="upg-cost">1000 🪙</span>
-                        <small id="upg-time">⏳ 1m</small>
+                    <button onclick="repairCastle()">
+                        🔨 Reparar castillo
+                        <small>30 🪨 / 10 ⛓️</small>
                     </button>
                 </div>
-            </div>
 
-            <!-- NUEVO: MODAL MI EJÉRCITO (CUARTEL) -->
-            <div id="train-modal" class="hidden">
-                <div class="train-panel">
-                    <button class="close-btn" onclick="closeTrainModal()">X</button>
-                    <h2 class="train-title">Mi ejército</h2>
-                    
-                    <div class="train-content">
-                        <div class="troop-section">
-                            <div class="troop-card available" onclick="trainSpecificTroop('barbarian')">
-                                <img src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='50' height='50'><text y='35' font-size='35'>🗡️</text></svg>">
-                                <p>Bárbaro</p>
-                                <small>25 💧</small>
-                            </div>
-                            <div class="troop-card locked">
-                                <span class="lock-icon">🔒</span><p>Gigante</p>
-                            </div>
-                            <div class="troop-card locked">
-                                <span class="lock-icon">🔒</span><p>Arquera</p>
-                            </div>
-                            <div class="troop-card locked">
-                                <span class="lock-icon">🔒</span><p>Duende</p>
-                            </div>
-                            <div class="troop-card locked">
-                                <span class="lock-icon">🔒</span><p>Mago</p>
-                            </div>
-                        </div>
+                <div class="panel-box">
+                    <h2>🛠️ Herramientas</h2>
+
+                    <button onclick="craftTool('axe')">
+                        🪓 Hacha
+                        <small>30 🌲 / 10 ⛓️</small>
+                    </button>
+
+                    <button onclick="craftTool('pickaxe')">
+                        ⛏️ Pico
+                        <small>30 🌲 / 20 ⛓️</small>
+                    </button>
+
+                    <button onclick="craftTool('hammer')">
+                        🔨 Martillo
+                        <small>40 🌲 / 30 ⛓️</small>
+                    </button>
+                </div>
+
+                <div class="panel-box">
+                    <h2>📊 Reino</h2>
+
+                    <div class="stat">
+                        <span>Nivel del castillo</span>
+                        <strong id="castleStat">1</strong>
                     </div>
 
-                    <div class="train-footer">
-                        <button class="attack-mock-btn" onclick="showNotification('El sistema de ataque se añadirá después.')">
-                            ⚔️ Atacar
-                        </button>
+                    <div class="stat">
+                        <span>Vida</span>
+                        <strong id="healthStat">100%</strong>
+                    </div>
+
+                    <div class="stat">
+                        <span>Arqueros</span>
+                        <strong id="archerStat">1</strong>
+                    </div>
+
+                    <div class="stat">
+                        <span>Victorias</span>
+                        <strong id="winsStat">0</strong>
                     </div>
                 </div>
-            </div>
 
-            <!-- MODAL DE LA TIENDA -->
-            <div id="shop-ui" class="hidden">
-                <div class="shop-panel">
-                    <div class="shop-top-icon"><div class="hammer-saw-icon">🔨🪚</div></div>
-                    <button class="close-btn" onclick="closeShop()">X</button>
-                    <h2 class="shop-title">Estructuras y trampas</h2>
-                    
-                    <div class="shop-tabs">
-                        <button class="tab-btn active" onclick="switchShopTab('ejercito')">Ejército</button>
-                        <button class="tab-btn" onclick="switchShopTab('recursos')">Recursos</button>
-                        <button class="tab-btn" onclick="switchShopTab('defensas')">Defensas</button>
-                        <button class="tab-btn" onclick="switchShopTab('trampas')">Trampas</button>
-                    </div>
-
-                    <div class="shop-content-area">
-                        <div id="tab-ejercito" class="shop-grid">
-                            <button class="shop-card" onclick="selectBuilding('camp')">
-                                <h3>Campamento</h3><p class="desc">Tus tropas se reúnen en los campamentos, así que construye más y mejóralos para levantar un poderoso ejército.</p><div class="price">200🪙 150💧</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('barracks')">
-                                <h3>Cuartel</h3><p class="desc">El cuartel es para entrenar tropas.</p><div class="price">300🪙 200💧</div>
-                            </button>
-                        </div>
-                        <div id="tab-recursos" class="shop-grid hidden">
-                            <button class="shop-card" onclick="selectBuilding('builder_hut')">
-                                <h3>Choza de constructor</h3><p class="desc">Básico para construir (2x2)</p><div class="price">100🪙</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('elixir_pump')">
-                                <h3>Recolector Elixir</h3><p class="desc">Extrae elixir de las profundidades</p><div class="price">300🪙</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('goldmine')">
-                                <h3>Mina de oro</h3><p class="desc">Extrae monedas (3x3)</p><div class="price">250💧</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('vault_elixir')">
-                                <h3>Almacén de Elixir</h3><p class="desc">Guarda el elixir extraído</p><div class="price">750🪙</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('vault_gold')">
-                                <h3>Almacén Monedas</h3><p class="desc">Guarda monedas (3x3)</p><div class="price">400💧</div>
-                            </button>
-                        </div>
-                        <div id="tab-defensas" class="shop-grid hidden">
-                            <button class="shop-card" onclick="selectBuilding('cannon')">
-                                <h3>Cañón</h3><p class="desc">Defensa ideal para cualquier zona terrestre.</p><div class="price">200🪙</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('tower')">
-                                <h3>Torre arqueras</h3><p class="desc">Dispara a distancia protegiendo la base.</p><div class="price">250🪙</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('wall')">
-                                <h3>Muro</h3><p class="desc">Frena el avance de tropas enemigas.</p><div class="price">40🪙</div>
-                            </button>
-                        </div>
-                        <div id="tab-trampas" class="shop-grid hidden">
-                            <p style="text-align:center; width:100%; color:#222; padding: 20px; font-weight: bold;">Próximamente...</p>
-                        </div>
-                    </div>
-
-                    <div class="shop-footer">
-                        <div class="shop-res res-wood"><span id="shop-wood">0</span> 🪙</div>
-                        <div class="shop-res res-stone"><span id="shop-stone">0</span> 💧</div>
-                    </div>
+                <div class="panel-box log-box">
+                    <h2>📜 Eventos</h2>
+                    <div id="eventLog"></div>
                 </div>
-            </div>
-            
-            <div id="notification-area"></div>
+
+            </aside>
         </div>
+    </section>
+
+
+    <!-- BATALLA -->
+    <section id="battleScreen" class="screen">
+
+        <div class="battle-header">
+            <button onclick="returnVillage()">← Volver al reino</button>
+
+            <div>
+                <h1>⚔️ BATALLA 1v1</h1>
+                <p>Destruye el castillo enemigo antes de que destruya el tuyo.</p>
+            </div>
+
+            <div class="battle-timer">
+                ⏱️ <span id="battleTimer">60</span>
+            </div>
+        </div>
+
+        <div class="battlefield">
+
+            <!-- JUGADOR -->
+            <div class="army player-army">
+
+                <h2>🏰 TU REINO</h2>
+
+                <div class="castle-battle player-castle">
+                    <div class="healthbar">
+                        <div id="playerHealthBar" class="health"></div>
+                    </div>
+
+                    <div class="castle-icon">🏰</div>
+                    <strong>Tu Castillo</strong>
+                    <span id="playerHealthText">1000 / 1000</span>
+                </div>
+
+                <div class="units">
+
+                    <button
+                        class="unit"
+                        onclick="attackEnemy('warrior')"
+                    >
+                        ⚔️
+                        <span>Guerrero</span>
+                        <small>25 daño</small>
+                    </button>
+
+                    <button
+                        class="unit"
+                        onclick="attackEnemy('archer')"
+                    >
+                        🏹
+                        <span>Arquero</span>
+                        <small>18 daño</small>
+                    </button>
+
+                    <button
+                        class="unit"
+                        onclick="attackEnemy('giant')"
+                    >
+                        👹
+                        <span>Gigante</span>
+                        <small>50 daño</small>
+                    </button>
+
+                </div>
+
+                <div class="army-stats">
+                    <span>⚔️ Ataque: <b id="playerAttack">100</b></span>
+                    <span>🛡️ Defensa: <b id="playerDefense">50</b></span>
+                </div>
+
+            </div>
+
+
+            <!-- CENTRO -->
+            <div class="battle-middle">
+
+                <div class="vs">VS</div>
+
+                <div id="battleMessage" class="battle-message">
+                    ¡La batalla comienza!
+                </div>
+
+                <div class="battle-log" id="battleLog"></div>
+
+            </div>
+
+
+            <!-- ENEMIGO -->
+            <div class="army enemy-army">
+
+                <h2>👹 ENEMIGO</h2>
+
+                <div class="castle-battle enemy-castle">
+
+                    <div class="healthbar">
+                        <div id="enemyHealthBar" class="health enemy-health"></div>
+                    </div>
+
+                    <div class="castle-icon">🏯</div>
+                    <strong>Castillo enemigo</strong>
+                    <span id="enemyHealthText">1000 / 1000</span>
+
+                </div>
+
+                <div class="enemy-units">
+
+                    <div class="enemy-unit">⚔️</div>
+                    <div class="enemy-unit">🏹</div>
+                    <div class="enemy-unit">🛡️</div>
+
+                </div>
+
+                <div class="army-stats">
+                    <span>⚔️ Ataque: <b id="enemyAttack">90</b></span>
+                    <span>🛡️ Defensa: <b id="enemyDefense">50</b></span>
+                </div>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+    <!-- RESULTADO -->
+    <div id="resultModal" class="modal">
+
+        <div class="modal-content">
+
+            <div id="resultIcon">🏆</div>
+
+            <h1 id="resultTitle">¡Victoria!</h1>
+
+            <p id="resultDescription">
+                Has destruido el castillo enemigo.
+            </p>
+
+            <div class="reward-box">
+                <div>🏆 <span id="rewardPoints">0</span> puntos</div>
+                <div>🪙 <span id="rewardGold">0</span> oro</div>
+            </div>
+
+            <button onclick="closeResult()">
+                Continuar
+            </button>
+
+        </div>
+
     </div>
-    <script src="game.js"></script>
+
+
+    <!-- NOTIFICACIÓN -->
+    <div id="notification" class="notification">
+        Recurso conseguido
+    </div>
+
+</main>
+
+<script src="script.js"></script>
+
 </body>
 </html>
