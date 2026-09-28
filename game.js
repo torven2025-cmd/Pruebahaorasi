@@ -8,8 +8,8 @@ window.addEventListener('resize', resizeCanvas); resizeCanvas();
 const TILE_SIZE = 25; 
 let gridSize = 40; 
 
-// Recursos iniciales para pruebas (Sin guardado local)
-let resources = { gold: 1500, elixir: 1500, points: 0, troops: 5, gems: 0 };
+// SIN GUARDADO LOCAL - ECONOMÍA: MONEDAS, ELIXIR, GEMAS
+let resources = { gold: 1500, elixir: 1500, points: 0, troops: 0, gems: 0 };
 let buildings = [];
 
 const thStats = [
@@ -43,18 +43,11 @@ const entityData = {
 let maxTroops = 0; let maxGold = 1000; let maxElixir = 1000;
 let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
 let isBuildMode = false; let frameCount = 0; 
-let mySavedBase = []; let deployedTroops = []; let lasers = [];
-
-// ESTADOS DEL COMBATE
-let inCombat = false; 
-let combatResolving = false; // Bandera de seguridad
-let combatSeconds = 180; 
-let combatTimerInterval = null;
 
 let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
 let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
 
-// CREACIÓN BASE INICIAL
+// CREACIÓN BASE INICIAL (Con Ayuntamiento Nivel 1 y Choza)
 if (buildings.length === 0) {
     buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 1, ...entityData.townhall, maxHp: 400, hp: 400 });
     buildings.push({ id: 2, gridX: 15, gridY: 18, type: 'builder_hut', ...entityData.builder_hut, maxHp: 100, hp: 100 });
@@ -62,10 +55,9 @@ if (buildings.length === 0) {
     updateCapacity();
 }
 
-// GENERADOR DE RECURSOS (Sin Deterioro)
+// GENERACIÓN DE RECURSOS (Cero deterioro)
 let resourceTimer = 0;
 setInterval(() => {
-    if (inCombat) return;
     let goldGen = 0, elixirGen = 0;
     resourceTimer++;
 
@@ -78,6 +70,7 @@ setInterval(() => {
     });
 
     if (resourceTimer >= 3) resourceTimer = 0;
+    
     if (goldGen > 0 || elixirGen > 0) { 
         resources.gold = Math.min(resources.gold + goldGen, maxGold);
         resources.elixir = Math.min(resources.elixir + elixirGen, maxElixir);
@@ -85,102 +78,9 @@ setInterval(() => {
     }
 }, 1000);
 
-
-// ==========================================
-// MOTOR DE COMBATE REESCRITO DESDE CERO
-// ==========================================
 function update() {
     frameCount++;
-    if (inCombat && !combatResolving) {
-        // Filtrar edificios muertos
-        buildings = buildings.filter(b => b.hp > 0);
-        
-        let townhallAlive = buildings.some(b => b.type === 'townhall');
-        
-        // Condiciones de fin
-        if (!townhallAlive) { resolveCombat('win'); return; }
-        if (deployedTroops.length === 0 && resources.troops <= 0) { resolveCombat('lose'); return; }
-
-        // Mover tropas
-        for (let i = deployedTroops.length - 1; i >= 0; i--) {
-            let t = deployedTroops[i];
-            
-            // Buscar objetivo más cercano
-            let nearest = getNearestBuilding(t.x, t.y);
-            if (!nearest) continue;
-
-            let bw = nearest.w || 3; let bh = nearest.h || 3;
-            let targetX = nearest.gridX * TILE_SIZE + (bw * TILE_SIZE) / 2;
-            let targetY = nearest.gridY * TILE_SIZE + (bh * TILE_SIZE) / 2;
-
-            let dx = targetX - t.x;
-            let dy = targetY - t.y;
-            let dist = Math.sqrt(dx * dx + dy * dy);
-
-            // Evitar problemas de física al llegar
-            if (dist > (TILE_SIZE + t.radius)) {
-                t.x += (dx / dist) * t.speed;
-                t.y += (dy / dist) * t.speed;
-            } else {
-                // Atacar
-                if (frameCount % 60 === 0) {
-                    nearest.hp -= t.damage;
-                }
-            }
-        }
-
-        // Defensas
-        if (frameCount % 45 === 0) {
-            buildings.forEach(b => {
-                if (b.type === 'tower' || b.type === 'cannon') {
-                    let bw = b.w || 3; let bh = b.h || 3;
-                    let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
-                    let by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
-                    
-                    let target = null;
-                    let minDist = b.range || 200;
-                    
-                    for (let t of deployedTroops) {
-                        let dist = Math.hypot(t.x - bx, t.y - by);
-                        if (dist < minDist) {
-                            minDist = dist;
-                            target = t;
-                        }
-                    }
-                    if (target) {
-                        target.hp -= (b.damage || 15);
-                        lasers.push({ x1: bx, y1: by, x2: target.x, y2: target.y, life: 10 });
-                    }
-                }
-            });
-        }
-        
-        // Limpiar tropas y rayos muertos
-        deployedTroops = deployedTroops.filter(t => t.hp > 0);
-        lasers.forEach(l => l.life--);
-        lasers = lasers.filter(l => l.life > 0);
-    }
-}
-
-function getNearestBuilding(x, y) {
-    let nearest = null, minDist = Infinity;
-    buildings.forEach(b => {
-        let bw = b.w || 3; let bh = b.h || 3;
-        let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
-        let by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
-        let dist = Math.hypot(bx - x, by - y);
-        if (dist < minDist) { minDist = dist; nearest = b; }
-    });
-    return nearest;
-}
-
-// ZONA TRANSPARENTE EN COMBATE (Margen de 1 cuadro alrededor de todo edificio)
-function isRestrictedZone(gX, gY) {
-    for (let b of buildings) {
-        let bw = b.w || 3; let bh = b.h || 3;
-        if (gX >= b.gridX - 1 && gX < b.gridX + bw + 1 && gY >= b.gridY - 1 && gY < b.gridY + bh + 1) return true;
-    }
-    return false;
+    // Combate eliminado por completo para mantener la estabilidad
 }
 
 function isOccupied(gX, gY, w, h, ignoreId = null) {
@@ -209,16 +109,6 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // ZONA TRANSPARENTE DE COMBATE
-    if (inCombat) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        for (let x = 0; x < gridSize; x++) {
-            for (let y = 0; y < gridSize; y++) {
-                if (isRestrictedZone(x, y)) { ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE); }
-            }
-        }
-    }
-
     buildings.forEach(b => {
         let bw = b.w || 3; let bh = b.h || 3;
         let px = b.gridX * TILE_SIZE, py = b.gridY * TILE_SIZE;
@@ -235,6 +125,8 @@ function draw() {
 
         ctx.fillStyle = b.color; ctx.fillRect(px, py, pxW, pyH);
         let hpRatio = b.hp / b.maxHp; 
+        if(isNaN(hpRatio) || !isFinite(hpRatio)) hpRatio = 1;
+
         let perimeter = (pxW * 2) + (pyH * 2);
 
         if (isBuildMode && selectedBuildingId === b.id) {
@@ -275,19 +167,6 @@ function draw() {
         ctx.lineWidth = 4; ctx.setLineDash([perimeter * p, perimeter]); ctx.lineDashOffset = 0;
         ctx.strokeRect(px, py, pxW, pyH); ctx.setLineDash([]);
     }
-
-    deployedTroops.forEach(t => {
-        ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
-        ctx.fillStyle = 'white'; ctx.font = `14px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🗡️', t.x, t.y);
-        
-        let thp = Math.max(0, t.hp / 100);
-        ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 10, t.y - 18, 20 * thp, 4);
-    });
-
-    lasers.forEach(l => {
-        ctx.strokeStyle = '#f39c12'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); ctx.stroke();
-    });
 
     ctx.restore();
 }
@@ -356,13 +235,7 @@ window.addEventListener('pointerup', e => {
         let worldX = ((e.clientX - canvas.width/2) / camera.zoom) + camera.x; let worldY = ((e.clientY - canvas.height/2) / camera.zoom) + camera.y;
         let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
 
-        if (inCombat && !combatResolving) {
-            if (isRestrictedZone(gX, gY)) {
-                showNotification("Área restringida. Despliega en la zona verde.");
-            } else {
-                deployTroop(worldX, worldY);
-            }
-        } else if (!pendingBuildingData) {
+        if (!pendingBuildingData) {
             let clickedBuilding = buildings.find(b => {
                 let bw = b.w || 3; let bh = b.h || 3;
                 return gX >= b.gridX && gX < b.gridX + bw && gY >= b.gridY && gY < b.gridY + bh;
@@ -375,97 +248,6 @@ window.addEventListener('pointerup', e => {
     if (pointers.size === 0) isCanvasTouch = false;
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
-
-// =======================================================
-// GESTIÓN DE COMBATE DIRECTA Y SIN ESPERAS
-// =======================================================
-
-function startCombatMatch() {
-    if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en el Cuartel!");
-    
-    mySavedBase = JSON.parse(JSON.stringify(buildings)); 
-    
-    buildings = [
-        { id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 1, ...entityData.townhall, hp: 400, maxHp: 400 },
-        { id: 4, gridX: 18, gridY: 14, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
-        { id: 5, gridX: 23, gridY: 18, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
-    ];
-    
-    inCombat = true; 
-    combatResolving = false;
-    combatPhase = 'battle'; // Inicia directo al tocar Atacar
-    combatSeconds = 180; // 3 minutos
-    deployedTroops = []; lasers = [];
-    
-    document.getElementById('main-hud').classList.add('hidden'); 
-    document.getElementById('combat-ui').classList.remove('hidden');
-    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.0;
-
-    updateCombatTimerUI();
-    if(combatTimerInterval) clearInterval(combatTimerInterval);
-    combatTimerInterval = setInterval(combatTick, 1000);
-}
-
-function combatTick() {
-    if(!inCombat || combatResolving) return;
-    combatSeconds--;
-    if(combatSeconds <= 0) {
-        resolveCombat('lose_time');
-    }
-    updateCombatTimerUI();
-}
-
-function updateCombatTimerUI() {
-    let m = Math.floor(combatSeconds / 60); let s = combatSeconds % 60;
-    document.getElementById('combat-timer').innerText = m + ":" + (s < 10 ? "0" + s : s);
-}
-
-function deployTroop(x, y) {
-    if (!inCombat || combatResolving || resources.troops <= 0) return;
-    resources.troops--; updateUI();
-    // Velocidad y daño subidos para que se note en las pruebas
-    deployedTroops.push({ x: x, y: y, hp: 100, damage: 20, speed: 2, radius: 10, target: null });
-}
-
-function resolveCombat(type) {
-    if (combatResolving) return;
-    combatResolving = true;
-    inCombat = false;
-    if(combatTimerInterval) clearInterval(combatTimerInterval);
-    
-    let surviving = deployedTroops.length + resources.troops; 
-    resources.troops = Math.min(maxTroops, surviving);
-    
-    if (type === 'win') {
-        let lootedCoins = 500; let lootedElixir = 500;
-        resources.gold = Math.min(resources.gold + lootedCoins, maxGold);
-        resources.elixir = Math.min(resources.elixir + lootedElixir, maxElixir);
-        resources.points += 20; 
-        resources.gems += 5; 
-        showNotification(`¡VICTORIA! +${lootedCoins}🪙 +${lootedElixir}💧 +5💎`); 
-    } else if (type === 'lose') { 
-        showNotification(`DERROTA. Te quedaste sin tropas.`);
-    } else if (type === 'lose_time') { 
-        showNotification(`DERROTA. Se agotó el tiempo.`);
-    } else if (type === 'surrender') { 
-        showNotification(`TE RENDISTE.`); 
-    }
-    
-    setTimeout(endCombat, 2000); // 2 segunditos para ver el mensaje, luego redirige
-}
-
-function surrender() { resolveCombat('surrender'); }
-
-function endCombat() {
-    combatResolving = false;
-    deployedTroops = []; lasers = []; 
-    buildings = JSON.parse(JSON.stringify(mySavedBase)); 
-    updateCapacity(); 
-    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.2;
-    document.getElementById('combat-ui').classList.add('hidden'); 
-    document.getElementById('main-hud').classList.remove('hidden');
-    updateUI();
-}
 
 // --- GESTIÓN DE TIENDA Y CONSTRUCCIÓN ---
 function openShop() { isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('shop-wood').innerText = Math.floor(resources.gold); document.getElementById('shop-stone').innerText = Math.floor(resources.elixir); document.getElementById('shop-coins').innerText = Math.floor(resources.gems); }
@@ -637,7 +419,6 @@ function updateUI() {
     document.getElementById('res-elixir').innerText = `${Math.floor(resources.elixir)}/${maxElixir}`;
     document.getElementById('res-gems').innerText = Math.floor(resources.gems);
     document.getElementById('res-troops').innerText = `${resources.troops}/${maxTroops}`;
-    document.getElementById('res-points').innerText = resources.points;
 }
 
 function toggleFullScreen() {
@@ -649,6 +430,10 @@ function toggleFullScreen() {
     } else {
         cancelFullScreen.call(doc); if (screen.orientation && screen.orientation.unlock) { screen.orientation.unlock(); }
     }
+}
+
+function startCombatMatch() {
+    showNotification("El combate ha sido desactivado temporalmente.");
 }
 
 updateCapacity(); updateUI();
