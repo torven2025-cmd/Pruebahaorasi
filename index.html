@@ -3,111 +3,186 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - HUD Limpio</title>
+    <title>Castle Battle - Estilo Clash</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="rotate-device-screen">
+        <div class="rotate-content">
+            <span class="rotate-icon">📱➡️🖥️</span>
+            <h2>Gira tu dispositivo</h2>
+            <p>Castle Battle se juega en modo horizontal.</p>
+        </div>
+    </div>
+
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
         <div id="ui-layer">
             
-            <!-- UI NORMAL (HUD Estilo Clash) -->
-            <div id="normal-ui">
+            <!-- HUD PRINCIPAL -->
+            <div id="main-hud">
                 <!-- Controles Izquierda -->
                 <div id="top-left-controls">
                     <button class="icon-btn" onclick="showNotification('📜 Misiones: ¡Próximamente!')" title="Misiones">📜</button>
                     <button class="icon-btn" onclick="toggleFullScreen()" id="btn-fs" title="Pantalla Completa">🔲</button>
                 </div>
 
-                <!-- Recursos Derecha -->
-                <div id="hud-resources">
-                    <div class="hud-pill pill-wood">🪵 <span id="res-wood">0</span></div>
-                    <div class="hud-pill pill-stone">🪨 <span id="res-stone">0</span></div>
-                    <div class="hud-pill pill-coins">🪙 <span id="res-coins">0/100</span></div>
-                    <div class="hud-pill pill-troops">🗡️ <span id="res-troops">0/0</span></div>
-                    <div class="hud-pill pill-points">🏆 <span id="res-points">0</span></div>
+                <!-- Centro Superior (Tropas) -->
+                <div id="ui-top-center">
+                    <div class="info-pill" title="Bárbaros">🗡️ <span id="res-troops">0/0</span></div>
+                    <div class="info-pill" title="Trofeos">🏆 <span id="res-points">0</span></div>
                 </div>
 
-                <!-- Botones Inferiores -->
-                <button id="btn-attack-hud" class="hud-btn" onclick="startCombatMatch()">⚔️ Atacar</button>
-                <button id="btn-build-hud" class="hud-btn" onclick="enterBuildMode()">🔨 Construir</button>
-                <button id="btn-shop-hud" class="hud-btn" onclick="openShop()">🏪 Tienda</button>
+                <!-- Recursos Derecha (Madera, Piedra, Monedas) -->
+                <div id="ui-top-right">
+                    <div class="res-pill pill-wood">
+                        <span id="res-wood">0</span>
+                        <div class="res-icon icon-wood">🪵</div>
+                    </div>
+                    <div class="res-pill pill-stone">
+                        <span id="res-stone">0</span>
+                        <div class="res-icon icon-stone">🪨</div>
+                    </div>
+                    <div class="res-pill pill-coins">
+                        <span id="res-coins">0/100</span>
+                        <div class="res-icon icon-coins">🪙</div>
+                    </div>
+                </div>
+
+                <!-- Botones Inferiores (Atacar y Tienda) -->
+                <div id="ui-bottom-left">
+                    <button id="btn-attack-hud" class="hud-btn" onclick="startCombatMatch()">⚔️ Atacar</button>
+                </div>
+
+                <div id="ui-bottom-right">
+                    <button id="btn-shop-hud" class="hud-btn" onclick="openShop()">🏪 Tienda</button>
+                </div>
             </div>
 
-            <!-- UI MODO CONSTRUCCIÓN (Estable y original) -->
-            <div id="build-ui" class="hidden">
-                <button id="btn-exit-build" onclick="exitBuildMode()">Salir del Modo</button>
-                
-                <div id="build-tray">
-                    <button class="build-item" onclick="selectBuilding('goldmine')">
-                        <span class="icon">⛏️🟡</span><br>Mina de Oro<br><small>250🪵 250🪨</small>
-                    </button>
-                    <button class="build-item" onclick="selectBuilding('vault')">
-                        <span class="icon">🏦</span><br>Almacén 🪙<br><small>400🪵 400🪨</small>
-                    </button>
-                    <button class="build-item" onclick="selectBuilding('lumbermill')">
-                        <span class="icon">🪚</span><br>Aserradero<br><small>150🪵 50🪨</small>
-                    </button>
-                    <button class="build-item" onclick="selectBuilding('mine')">
-                        <span class="icon">⛏️</span><br>Mina Piedra<br><small>50🪵 150🪨</small>
-                    </button>
-                    <button class="build-item" onclick="selectBuilding('camp')">
-                        <span class="icon">⛺</span><br>Campamento<br><small>200🪵 150🪨</small>
-                    </button>
-                    <button class="build-item" onclick="selectBuilding('wall')">
-                        <span class="icon">🧱</span><br>Muro<br><small>40🪵 20🪨</small>
-                    </button>
-                    <button class="build-item" onclick="selectBuilding('tower')">
-                        <span class="icon">🗼</span><br>Torre<br><small>150🪵 150🪨</small>
-                    </button>
-                </div>
+            <!-- CONTROLES DE COLOCACIÓN -->
+            <div id="placement-controls" class="hidden">
+                <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
+                <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
+            </div>
 
-                <div id="placement-controls" class="hidden">
-                    <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
-                    <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
-                </div>
+            <!-- CONTROLES DE EDICIÓN AL TOCAR ESTRUCTURA -->
+            <div id="edit-controls" class="hidden">
+                <button id="btn-train-troop" onclick="trainTroop()" style="display:none;">🗡️ Entrenar (25🪵)</button>
+                <button id="btn-repair" onclick="repairBuilding()">🔨 Reparar</button>
+                <button id="btn-relocate" onclick="startRelocate()">🔄 Reubicar</button>
+                <button id="btn-destroy-init" onclick="initDestroy()">💥 Destruir</button>
+                <button id="btn-cancel-edit" onclick="cancelEdit()">❌ Salir</button>
+            </div>
 
-                <div id="edit-controls" class="hidden">
-                    <button id="btn-train-troop" onclick="trainTroop()" style="display:none;">🗡️ Entrenar Bárbaro</button>
-                    <button id="btn-repair" onclick="repairBuilding()">🔨 Reparar</button>
-                    <button id="btn-relocate" onclick="startRelocate()">🔄 Reubicar</button>
-                    <button id="btn-destroy-init" onclick="initDestroy()">💥 Destruir</button>
-                    <button id="btn-cancel-edit" onclick="cancelEdit()">❌ Cancelar</button>
-                </div>
+            <div id="ruin-controls" class="hidden">
+                <button id="btn-rebuild" onclick="rebuildBuilding()">🏗️ Reconstruir</button>
+                <button id="btn-destroy-ruin" onclick="initDestroy()">💥 Limpiar</button>
+                <button id="btn-cancel-ruin" onclick="cancelEdit()">❌ Salir</button>
+            </div>
 
-                <div id="ruin-controls" class="hidden">
-                    <button id="btn-rebuild" onclick="rebuildBuilding()">🏗️ Reconstruir</button>
-                    <button id="btn-destroy-ruin" onclick="initDestroy()">💥 Limpiar</button>
-                    <button id="btn-cancel-ruin" onclick="cancelEdit()">❌ Cancelar</button>
-                </div>
-
-                <div id="destroy-controls" class="hidden">
-                    <button id="btn-cancel-destroy" onclick="cancelEdit()">❌ Cancelar</button>
-                    <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
-                </div>
+            <div id="destroy-controls" class="hidden">
+                <button id="btn-cancel-destroy" onclick="cancelEdit()">❌ Cancelar</button>
+                <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
             </div>
 
             <!-- UI DE COMBATE -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
-                    <p>Toca los bordes para soltar bárbaros</p>
+                    <p>Toca fuera de la zona roja para desplegar</p>
                     <button onclick="surrender()">Rendirse y Retirarse</button>
                 </div>
             </div>
 
-            <!-- UI DE LA TIENDA -->
+            <!-- MODAL DE LA TIENDA (NUEVO DISEÑO) -->
             <div id="shop-ui" class="hidden">
                 <div class="shop-panel">
-                    <h2>🏪 Tienda del Reino</h2>
-                    <div class="shop-items">
-                        <button onclick="buyExpansion()">
-                            🗺️ Expandir Mapa (+5x5)<br>
-                            <small>Costo: <span id="expansion-cost-text">100</span> 🪙</small>
-                        </button>
+                    <div class="shop-top-icon">
+                        <div class="hammer-saw-icon">🔨🪚</div>
                     </div>
-                    <button class="close-btn" onclick="closeShop()">Cerrar Tienda</button>
+                    <button class="close-btn" onclick="closeShop()">X</button>
+                    
+                    <h2 class="shop-title">Estructuras y trampas</h2>
+                    
+                    <div class="shop-tabs">
+                        <button class="tab-btn active" onclick="switchShopTab('ejercito')">Ejército</button>
+                        <button class="tab-btn" onclick="switchShopTab('recursos')">Recursos</button>
+                        <button class="tab-btn" onclick="switchShopTab('defensas')">Defensas</button>
+                        <button class="tab-btn" onclick="switchShopTab('trampas')">Trampas</button>
+                    </div>
+
+                    <div class="shop-content-area">
+                        <!-- EJÉRCITO -->
+                        <div id="tab-ejercito" class="shop-grid">
+                            <button class="shop-card" onclick="selectBuilding('camp')">
+                                <h3>Campamento</h3>
+                                <p class="desc">Tus tropas se reúnen en los campamentos. (Ocupa 3x3)</p>
+                                <div class="price">200🪵 150🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('barracks')">
+                                <h3>Cuartel</h3>
+                                <p class="desc">El cuartel sirve para entrenar poderosas tropas. (Ocupa 3x3)</p>
+                                <div class="price">300🪵 200🪨</div>
+                            </button>
+                        </div>
+
+                        <!-- RECURSOS -->
+                        <div id="tab-recursos" class="shop-grid hidden">
+                            <button class="shop-card" onclick="selectBuilding('builder_hut')">
+                                <h3>Choza de constructor</h3><p class="desc">Básico para tu aldea (2x2)</p><div class="price">100🪵</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('lumbermill')">
+                                <h3>Choza de leñador</h3><p class="desc">Extrae madera (3x3)</p><div class="price">150🪵 50🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('mine')">
+                                <h3>Mina de piedra</h3><p class="desc">Extrae piedra (3x3)</p><div class="price">50🪵 150🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('goldmine')">
+                                <h3>Mina de oro</h3><p class="desc">Extrae monedas (3x3)</p><div class="price">250🪵 250🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('vault_wood')">
+                                <h3>Almacén Madera</h3><p class="desc">Guarda más madera (3x3)</p><div class="price">200🪵 200🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('vault_stone')">
+                                <h3>Almacén Piedra</h3><p class="desc">Guarda más piedra (3x3)</p><div class="price">200🪵 200🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('vault_coins')">
+                                <h3>Almacén Monedas</h3><p class="desc">Guarda monedas (3x3)</p><div class="price">400🪵 400🪨</div>
+                            </button>
+                        </div>
+
+                        <!-- DEFENSAS -->
+                        <div id="tab-defensas" class="shop-grid hidden">
+                            <button class="shop-card" onclick="selectBuilding('cannon')">
+                                <h3>Cañón</h3>
+                                <p class="desc">Ideales para defender cualquier zona. (3x3)</p>
+                                <div class="price">200🪵 200🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('tower')">
+                                <h3>Torre de arqueras</h3>
+                                <p class="desc">Dispara a distancia. (3x3)</p>
+                                <div class="price">250🪵 250🪨</div>
+                            </button>
+                            <button class="shop-card" onclick="selectBuilding('wall')">
+                                <h3>Muro</h3>
+                                <p class="desc">Protege tu aldea. (1x1)</p>
+                                <div class="price">40🪵 20🪨</div>
+                            </button>
+                        </div>
+
+                        <!-- TRAMPAS -->
+                        <div id="tab-trampas" class="shop-grid hidden">
+                            <p style="text-align:center; width:100%; color:#555; padding: 20px;">Próximamente...</p>
+                        </div>
+                    </div>
+
+                    <!-- Recursos de la Tienda -->
+                    <div class="shop-footer">
+                        <div class="shop-res res-wood">🪵 <span id="shop-wood">0</span></div>
+                        <div class="shop-res res-stone">🪨 <span id="shop-stone">0</span></div>
+                        <div class="shop-res res-coins">🪙 <span id="shop-coins">0</span></div>
+                    </div>
                 </div>
             </div>
             
