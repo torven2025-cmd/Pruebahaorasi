@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Combate Directo</title>
+    <title>Castle Battle - Combate Reconstruido</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -78,11 +78,11 @@
                 <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
             </div>
 
-            <!-- UI DE COMBATE (Sin 10s de espera, directo a 3 minutos) -->
+            <!-- UI DE COMBATE (Sin el texto de 10s) -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
-                    <p>Tiempo restante:</p>
+                    <p id="combat-status-text">Tiempo restante:</p>
                     <div id="combat-timer">03:00</div>
                     <button onclick="surrender()">Rendirse y Retirarse</button>
                 </div>
@@ -115,19 +115,19 @@
                         </div>
                         <div id="tab-recursos" class="shop-grid hidden">
                             <button class="shop-card" onclick="selectBuilding('builder_hut')">
-                                <h3>Choza de constructor</h3><p class="desc">Básico para construir</p><div class="price">100🪙</div>
+                                <h3>Choza de constructor</h3><p class="desc">Básico para construir (2x2)</p><div class="price">100🪙</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('elixir_pump')">
-                                <h3>Recolector Elixir</h3><p class="desc">Extrae elixir del subsuelo</p><div class="price">50🪙 150💧</div>
+                                <h3>Recolector Elixir</h3><p class="desc">Extrae elixir del subsuelo (3x3)</p><div class="price">50🪙 150💧</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('goldmine')">
-                                <h3>Mina de oro</h3><p class="desc">Extrae monedas</p><div class="price">250🪙 250💧</div>
+                                <h3>Mina de oro</h3><p class="desc">Extrae monedas (3x3)</p><div class="price">250🪙 250💧</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('vault_elixir')">
-                                <h3>Almacén de Elixir</h3><p class="desc">Guarda elixir</p><div class="price">200🪙 200💧</div>
+                                <h3>Almacén de Elixir</h3><p class="desc">Guarda elixir (3x3)</p><div class="price">200🪙 200💧</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('vault_gold')">
-                                <h3>Almacén Monedas</h3><p class="desc">Guarda monedas</p><div class="price">400🪙 400💧</div>
+                                <h3>Almacén Monedas</h3><p class="desc">Guarda monedas (3x3)</p><div class="price">400🪙 400💧</div>
                             </button>
                         </div>
                         <div id="tab-defensas" class="shop-grid hidden">
