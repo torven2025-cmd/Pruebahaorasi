@@ -86,7 +86,6 @@ function update() {
     if (inCombat && !combatOver) {
         buildings = buildings.filter(b => b.hp > 0);
         
-        // Condiciones de fin de batalla
         if (buildings.length === 0 && deployedTroops.length > 0) { resolveCombat('win'); return; }
         if (deployedTroops.length === 0 && resources.troops <= 0 && buildings.length > 0) { resolveCombat('lose'); return; }
 
@@ -149,9 +148,11 @@ function draw() {
     ctx.strokeStyle = inCombat ? '#ff4500' : '#d4af37';
     ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
+    // DIBUJAR ESTRUCTURAS
     buildings.forEach(b => {
         let px = b.gridX * TILE_SIZE, py = b.gridY * TILE_SIZE;
         
+        // ESTADO RUINA (0% HP)
         if (b.hp <= 0) {
             ctx.fillStyle = '#333'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
             if (isBuildMode && selectedBuildingId === b.id) {
@@ -164,50 +165,50 @@ function draw() {
             return; 
         }
 
+        // ESTADO NORMAL
         ctx.fillStyle = b.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        
+        // SISTEMA DE VIDA EN EL BORDE (Sin barra flotante)
+        let hpRatio = b.hp / b.maxHp;
+        let perimeter = TILE_SIZE * 4;
+
         if (isBuildMode && selectedBuildingId === b.id) {
             ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
         } else {
-            ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            // Fondo oscuro para el borde
+            ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            
+            // Borde verde o rojo según vida
+            if (hpRatio > 0) {
+                ctx.strokeStyle = (hpRatio > 0.5) ? '#2ecc71' : '#e74c3c';
+                ctx.setLineDash([perimeter * hpRatio, perimeter]);
+                ctx.lineDashOffset = 0;
+                ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+                ctx.setLineDash([]); // Reset vital
+            }
         }
 
         if (b.emoji) {
             ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(b.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2);
         }
-        
-        if (b.hp > 0 && b.hp < b.maxHp) {
-            ctx.fillStyle = 'black'; ctx.fillRect(px, py - 10, TILE_SIZE, 6);
-            ctx.fillStyle = (b.hp/b.maxHp > 0.5) ? '#2ecc71' : '#e74c3c'; 
-            ctx.fillRect(px, py - 10, TILE_SIZE * (b.hp/b.maxHp), 6);
-        }
     });
 
-    // NUEVO SISTEMA VISUAL: Franja de carga en reversa
+    // SISTEMA VISUAL PARA COLOCAR NUEVOS EDIFICIOS (Caja semitransparente como pediste)
     if (pendingBuildingData && pGridX >= 0 && pGridY >= 0) {
         let px = pGridX * TILE_SIZE; let py = pGridY * TILE_SIZE;
         let isOccupied = buildings.some(b => b.gridX === pGridX && b.gridY === pGridY);
         
-        // 1. Dibujar estructura semitransparente (sin fondo de caja invasiva)
-        ctx.globalAlpha = 0.6;
-        ctx.fillStyle = pendingBuildingData.color; 
+        ctx.fillStyle = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(46, 204, 113, 0.5)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        
+        ctx.globalAlpha = 0.8;
+        ctx.fillStyle = pendingBuildingData.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         if (pendingBuildingData.emoji) {
-            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`;
             ctx.fillText(pendingBuildingData.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2);
         }
         ctx.globalAlpha = 1.0;
-
-        // 2. Animación de "Carga en reversa" alrededor del perímetro
-        let perimeter = TILE_SIZE * 4;
-        let p = 1 - ((frameCount % 90) / 90); // Va de 1.0 a 0.0 suavemente
-        
-        ctx.strokeStyle = isOccupied ? '#e74c3c' : '#2ecc71';
-        ctx.lineWidth = 4;
-        ctx.setLineDash([perimeter * p, perimeter]);
-        ctx.lineDashOffset = 0;
-        ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
-        ctx.setLineDash([]); // Reset vital para el resto del canvas
     }
 
     deployedTroops.forEach(t => {
@@ -487,7 +488,6 @@ function deployTroop(x, y) {
     deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 8, target: null });
 }
 
-// NUEVO: Sistema de Supervivencia Centralizado
 function resolveCombat(type) {
     if (combatOver) return;
     combatOver = true;
