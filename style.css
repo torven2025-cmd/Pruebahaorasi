@@ -1,40 +1,56 @@
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-user-select: none; }
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none; -webkit-user-select: none;
+}
+
 body { background-color: #111; overflow: hidden; }
 #game-container { position: relative; width: 100vw; height: 100vh; background-color: #2c3e50; }
+
 canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+
 #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
 #resource-bar, button, .build-item, #shop-ui { pointer-events: auto; }
 
-#resource-bar { display: flex; justify-content: space-around; background: linear-gradient(180deg, #2a2a2a 0%, #111 100%); padding: 12px; color: #ffd700; font-weight: bold; border-bottom: 3px solid #000; box-shadow: 0 4px 6px rgba(0,0,0,0.5); }
+#resource-bar {
+    display: flex; justify-content: space-around; background: linear-gradient(180deg, #2a2a2a 0%, #111 100%);
+    padding: 12px; color: #ffd700; font-weight: bold; border-bottom: 3px solid #000; box-shadow: 0 4px 6px rgba(0,0,0,0.5);
+}
 .resource { font-size: 0.95rem; text-shadow: 1px 1px 2px black; }
 
 #zoom-controls { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 15px; }
 #zoom-controls button { width: 50px; height: 50px; border-radius: 50%; background: #444; color: white; font-size: 1.2rem; border: 2px solid #666; box-shadow: 0 4px 6px rgba(0,0,0,0.4); cursor: pointer;}
 
-#action-menu { position: absolute; right: 10px; top: 70px; display: flex; flex-direction: column; gap: 10px; }
-.action-btn { padding: 10px; border-radius: 8px; font-weight: bold; border: 2px solid #333; box-shadow: 0 4px #222; cursor: pointer; color: #fff; font-size: 0.9rem;}
-.action-btn:active { transform: translateY(4px); box-shadow: 0 0 #222; }
-.build-mode-btn { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); border-color: #1c5980; box-shadow: 0 4px #1c5980; }
-.attack-btn { background: linear-gradient(180deg, #e67e22 0%, #d35400 100%); border-color: #9c3f00; box-shadow: 0 4px #9c3f00; }
-.action-btn:nth-child(2) { background: linear-gradient(180deg, #d4af37 0%, #aa8c2c 100%); color: #111; border-color: #5c4b17; box-shadow: 0 4px #5c4b17; }
-.shop-btn { background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%); border-color: #5b2c6f; box-shadow: 0 4px #5b2c6f; }
-.mission-btn { background: linear-gradient(180deg, #95a5a6 0%, #7f8c8d 100%); border-color: #4d5656; box-shadow: 0 4px #4d5656; }
+/* Botones laterales originales */
+#action-menu { position: absolute; right: 15px; top: 80px; display: flex; flex-direction: column; gap: 12px; }
+.action-btn { padding: 12px; border-radius: 8px; font-weight: bold; border: 2px solid #5c4b17; box-shadow: 0 4px #5c4b17; cursor: pointer; color: #111; background: linear-gradient(180deg, #d4af37 0%, #aa8c2c 100%);}
+.action-btn:active { transform: translateY(4px); box-shadow: 0 0 #5c4b17; }
+.build-mode-btn { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); border-color: #1c5980; box-shadow: 0 4px #1c5980; color: white;}
+.attack-btn { background: linear-gradient(180deg, #e67e22 0%, #d35400 100%); border-color: #9c3f00; box-shadow: 0 4px #9c3f00; color: white;}
 
+/* UI MODO CONSTRUCCIÓN ORIGINAL */
 #btn-exit-build { position: absolute; top: 70px; right: 15px; background: #e74c3c; color: white; padding: 10px 20px; border-radius: 20px; font-weight: bold; border: 2px solid #c0392b; cursor: pointer; }
 
 #build-tray {
-    position: absolute; bottom: 25px; left: 2.5%; width: 95%; display: flex; gap: 15px; padding: 15px;
+    position: absolute; bottom: 25px; left: 2.5%; width: 95%; 
+    display: flex; gap: 15px; padding: 15px;
     background: rgba(20, 20, 20, 0.95); border: 3px solid #444; border-radius: 15px;
-    overflow-x: auto; scroll-snap-type: x mandatory; box-shadow: 0 10px 20px rgba(0,0,0,0.8);
+    overflow-x: auto; scroll-snap-type: x mandatory;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.8);
 }
 .build-item {
-    flex: 0 0 115px; height: 125px; scroll-snap-align: center; background: linear-gradient(180deg, #555 0%, #333 100%); color: white;
-    border: 2px solid #222; border-radius: 12px; display: flex; flex-direction: column; justify-content: center; align-items: center;
+    flex: 0 0 115px; height: 125px; scroll-snap-align: center;
+    background: linear-gradient(180deg, #555 0%, #333 100%); color: white;
+    border: 2px solid #222; border-radius: 12px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
     font-size: 0.85rem; box-shadow: 0 4px 6px rgba(0,0,0,0.5); cursor: pointer; text-align: center;
 }
 .build-item .icon { font-size: 2rem; margin-bottom: 5px; }
 
-#placement-controls { position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; width: 90%; max-width: 400px; }
+#placement-controls {
+    position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 20px; width: 90%; max-width: 400px;
+}
 #placement-controls button { flex: 1; padding: 15px; font-size: 1.2rem; font-weight: bold; border-radius: 10px; color: white; border: none; box-shadow: 0 5px rgba(0,0,0,0.5); cursor: pointer; }
 #btn-cancel { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); }
 #btn-confirm { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); }
@@ -52,4 +68,4 @@ canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 .close-btn { background: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
 
 .hidden { display: none !important; }
-#notification-area { position: absolute; top: 20%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 4px #000; pointer-events: none; z-index: 100; text-align: center; width: 100%;}
+#notification-area { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 4px #000; pointer-events: none; width: 100%; text-align: center; z-index: 100;}
