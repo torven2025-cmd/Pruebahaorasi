@@ -1,125 +1,99 @@
-#rotate-device-screen {
-    display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-    background: #111; z-index: 9999; color: white; text-align: center;
-    justify-content: center; align-items: center; flex-direction: column;
-}
-.rotate-content { padding: 20px; border: 2px dashed #f1c40f; border-radius: 15px; width: 80%; }
-.rotate-icon { font-size: 4rem; display: block; margin-bottom: 20px; animation: rotateAnim 2s infinite ease-in-out;}
-@keyframes rotateAnim { 0% { transform: rotate(0deg); } 50% { transform: rotate(-90deg); } 100% { transform: rotate(-90deg); } }
-
-@media screen and (orientation: portrait) {
-    #rotate-device-screen { display: flex; }
-    #game-container { display: none; }
+* {
+    margin: 0; padding: 0; box-sizing: border-box;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    user-select: none; -webkit-user-select: none;
 }
 
-* { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; -webkit-user-select: none; }
 body { background-color: #111; overflow: hidden; }
 #game-container { position: relative; width: 100vw; height: 100vh; background-color: #4c7c2b; }
 canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
 #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-button, .shop-item, #shop-ui { pointer-events: auto; }
+button, .build-item, #shop-ui { pointer-events: auto; }
 
-/* === HUD PRINCIPAL ESTILO CLASH === */
-#main-hud { width: 100%; height: 100%; position: absolute; }
+/* === NUEVO HUD (Limpio tipo CoC) === */
+#top-left-controls { position: absolute; top: 15px; left: 15px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
+.icon-btn { width: 45px; height: 45px; border-radius: 10px; background: rgba(0,0,0,0.6); color: white; font-size: 1.2rem; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; }
 
-/* Perfil (Top Left) */
-#ui-top-left { position: absolute; top: 15px; left: 15px; display: flex; align-items: center; pointer-events: auto; }
-.level-badge { 
-    width: 45px; height: 45px; background: radial-gradient(circle, #3498db, #2980b9); 
-    border: 3px solid white; border-radius: 10px; transform: rotate(45deg); 
-    display: flex; justify-content: center; align-items: center; z-index: 2;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.6);
+#hud-resources { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; align-items: flex-end;}
+.hud-pill { 
+    display: flex; justify-content: space-between; align-items: center; 
+    min-width: 120px; padding: 6px 12px; border-radius: 20px; 
+    border: 2px solid #222; font-weight: bold; color: white; 
+    text-shadow: 1px 1px 2px black; box-shadow: 0 4px 6px rgba(0,0,0,0.5); 
+    font-size: 0.95rem;
 }
-.level-badge span { transform: rotate(-45deg); color: white; font-weight: 900; font-size: 1.2rem;}
-.player-name-bar { 
-    background: rgba(0,0,0,0.5); padding: 6px 20px 6px 30px; margin-left: -20px; 
-    border-radius: 0 15px 15px 0; color: white; font-weight: bold; font-size: 1rem;
-    border: 1px solid rgba(255,255,255,0.2); border-left: none; text-shadow: 1px 1px 2px black;
-}
+/* Colores tipo Clash of Clans */
+.pill-wood { background: linear-gradient(to bottom, #f1c40f, #e67e22); } /* Oro */
+.pill-stone { background: linear-gradient(to bottom, #af7ac5, #8e44ad); } /* Elixir */
+.pill-coins { background: linear-gradient(to bottom, #2ecc71, #27ae60); } /* Gemas */
+.pill-troops { background: linear-gradient(to bottom, #95a5a6, #7f8c8d); }
+.pill-points { background: linear-gradient(to bottom, #3498db, #2980b9); }
 
-/* Centro Superior (Tropas y Trofeos) */
-#ui-top-center { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; pointer-events: auto; }
-.info-pill {
-    background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px;
-    color: white; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.2);
+.hud-btn { 
+    position: absolute; padding: 12px 20px; border-radius: 12px; 
+    font-weight: 900; font-size: 1.1rem; color: white; border: 3px solid #222; 
+    box-shadow: 0 5px 10px rgba(0,0,0,0.6); cursor: pointer; pointer-events: auto; 
     text-shadow: 1px 1px 2px black;
 }
+.hud-btn:active { transform: translateY(4px); box-shadow: 0 1px #111; }
+#btn-attack-hud { bottom: 20px; left: 20px; background: linear-gradient(to bottom, #e67e22, #d35400); border-color: #873600; }
+#btn-shop-hud { bottom: 20px; right: 20px; background: linear-gradient(to bottom, #f1c40f, #f39c12); color: black; text-shadow: none; border-color: #9c640c;}
+#btn-build-hud { bottom: 20px; left: 50%; transform: translateX(-50%); background: linear-gradient(to bottom, #3498db, #2980b9); border-color: #1c5980; }
 
-/* Recursos (Top Right) */
-#ui-top-right { position: absolute; top: 15px; right: 25px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
-.res-pill {
-    width: 140px; height: 30px; background: rgba(0,0,0,0.5); border-radius: 15px;
-    display: flex; align-items: center; justify-content: flex-end; padding-right: 25px; 
-    position: relative; border: 1px solid rgba(255,255,255,0.2);
-    color: white; font-weight: bold; font-size: 0.9rem; text-shadow: 1px 1px 2px black;
+/* === UI MODO CONSTRUCCIÓN (Estable y Original) === */
+#btn-exit-build { position: absolute; top: 15px; right: 15px; background: #e74c3c; color: white; padding: 10px 20px; border-radius: 20px; font-weight: bold; border: 2px solid #c0392b; cursor: pointer; }
+
+#build-tray {
+    position: absolute; bottom: 25px; left: 2.5%; width: 95%; 
+    display: flex; gap: 15px; padding: 15px;
+    background: rgba(20, 20, 20, 0.95); border: 3px solid #444; border-radius: 15px;
+    overflow-x: auto; scroll-snap-type: x mandatory;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.8);
 }
-.res-icon {
-    position: absolute; right: -15px; top: -5px; width: 40px; height: 40px; border-radius: 50%;
-    display: flex; justify-content: center; align-items: center; font-size: 1.2rem; 
-    border: 2px solid #222; box-shadow: 0 2px 5px rgba(0,0,0,0.8);
+.build-item {
+    flex: 0 0 115px; height: 125px; scroll-snap-align: center;
+    background: linear-gradient(180deg, #555 0%, #333 100%); color: white;
+    border: 2px solid #222; border-radius: 12px;
+    display: flex; flex-direction: column; justify-content: center; align-items: center;
+    font-size: 0.85rem; box-shadow: 0 4px 6px rgba(0,0,0,0.5); cursor: pointer; text-align: center;
 }
-.icon-wood { background: radial-gradient(circle, #f1c40f, #e67e22); }
-.icon-stone { background: radial-gradient(circle, #e056fd, #be2edd); }
-.icon-coins { background: radial-gradient(circle, #2ecc71, #27ae60); }
+.build-item .icon { font-size: 2rem; margin-bottom: 5px; }
 
-/* Botones de Acción (Esquinas) */
-.coc-btn {
-    border-radius: 12px; color: white; font-weight: 900; text-shadow: 1px 1px 2px black;
-    display: flex; flex-direction: column; align-items: center; justify-content: center;
-    padding: 8px 20px; box-shadow: 0 6px 10px rgba(0,0,0,0.5); cursor: pointer; border: 3px solid #5c4b17;
+#placement-controls {
+    position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+    display: flex; gap: 20px; width: 90%; max-width: 400px;
 }
-.coc-btn:active { transform: scale(0.95); }
-.coc-btn .btn-icon { font-size: 2.2rem; margin-bottom: -5px; }
+#placement-controls button { flex: 1; padding: 15px; font-size: 1.2rem; font-weight: bold; border-radius: 10px; color: white; border: none; box-shadow: 0 5px rgba(0,0,0,0.5); cursor: pointer; text-shadow: 1px 1px 2px black;}
+#btn-cancel { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); }
+#btn-confirm { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); }
 
-#ui-bottom-left { position: absolute; bottom: 20px; left: 20px; pointer-events: auto; }
-.btn-attack { background: linear-gradient(to bottom, #e67e22, #d35400); border-color: #873600; }
-
-#ui-bottom-right { position: absolute; bottom: 20px; right: 20px; pointer-events: auto; }
-.btn-shop { background: linear-gradient(to bottom, #f1c40f, #f39c12); border-color: #9c640c; color: #111; text-shadow: none;}
-
-/* Botones Laterales Pequeños */
-#ui-left-side { position: absolute; top: 80px; left: 15px; display: flex; flex-direction: column; gap: 10px; pointer-events: auto; }
-.side-btn { 
-    background: rgba(0,0,0,0.6); color: white; border: 1px solid rgba(255,255,255,0.3); 
-    border-radius: 10px; padding: 8px; font-size: 0.75rem; font-weight: bold; cursor: pointer; text-align: center;
+#edit-controls, #destroy-controls, #ruin-controls {
+    position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 95%; max-width: 450px;
 }
-
-/* === MODAL DE LA TIENDA === */
-#shop-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 20; }
-.shop-panel { background: #e0e0e0; border-radius: 15px; border: 4px solid #555; width: 90%; max-width: 650px; height: 85vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); overflow: hidden; }
-.shop-header { background: #333; color: white; padding: 15px; display: flex; justify-content: space-between; align-items: center; border-bottom: 4px solid #222; }
-.shop-header h2 { margin: 0; font-size: 1.5rem; text-shadow: 1px 1px 2px black;}
-.close-btn { background: #e74c3c; color: white; border: 2px solid #c0392b; width: 35px; height: 35px; border-radius: 8px; font-weight: bold; font-size: 1.2rem; cursor: pointer; }
-
-.shop-grid { padding: 15px; display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 15px; overflow-y: auto; flex-grow: 1; }
-.shop-item {
-    background: linear-gradient(to bottom, #fff, #ddd); border: 2px solid #999; border-radius: 10px;
-    display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 10px;
-    font-size: 0.85rem; font-weight: bold; color: #333; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-}
-.shop-item:active { transform: scale(0.95); }
-.shop-item .s-icon { font-size: 2.5rem; margin-bottom: 5px; }
-.expansion-item { background: linear-gradient(to bottom, #f1c40f, #f39c12); border-color: #d68910; color: #111; }
-
-/* === CONTROLES DE EDICIÓN Y COLOCACIÓN === */
-#placement-controls, #edit-controls, #destroy-controls, #ruin-controls {
-    position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%);
-    display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 95%; max-width: 500px; pointer-events: auto;
-}
-#placement-controls button, #edit-controls button, #destroy-controls button, #ruin-controls button {
-    flex: 1 1 30%; padding: 12px 5px; font-size: 0.9rem; font-weight: bold; border-radius: 8px; color: white; border: none; box-shadow: 0 5px rgba(0,0,0,0.5); cursor: pointer; text-shadow: 1px 1px 2px black;
+#edit-controls button, #destroy-controls button, #ruin-controls button {
+    flex: 1 1 45%; padding: 15px 5px; font-size: 0.95rem; font-weight: bold; border-radius: 10px; color: white; border: none; box-shadow: 0 5px rgba(0,0,0,0.5); cursor: pointer; text-shadow: 1px 1px 2px black;
 }
 #btn-train-troop { background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%); flex-basis: 100% !important; margin-bottom: 5px;}
 #btn-repair { background: linear-gradient(180deg, #f1c40f 0%, #f39c12 100%); color: black !important; text-shadow: none !important;}
-#btn-rebuild, #btn-confirm { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); }
+#btn-rebuild { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); }
 #btn-relocate { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); }
 #btn-destroy-init, #btn-destroy-ruin, #btn-confirm-destroy { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); }
-#btn-cancel, #btn-cancel-edit, #btn-cancel-destroy, #btn-cancel-ruin { background: linear-gradient(180deg, #95a5a6 0%, #7f8c8d 100%); }
+#btn-cancel-edit, #btn-cancel-destroy, #btn-cancel-ruin { background: linear-gradient(180deg, #95a5a6 0%, #7f8c8d 100%); }
 
-#combat-ui { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 400px; pointer-events: none; }
+/* === UI DE COMBATE === */
+#combat-ui { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 500px; pointer-events: none; }
 #combat-header { background: rgba(139, 0, 0, 0.85); padding: 15px; border-radius: 10px; text-align: center; color: white; border: 2px solid #ff4500; pointer-events: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.6);}
 #combat-header button { margin-top: 10px; padding: 10px 20px; background: #fff; color: #8b0000; font-weight: bold; border: none; border-radius: 5px; cursor: pointer; }
+
+/* === MODAL DE LA TIENDA === */
+#shop-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 20; }
+.shop-panel { background: #3e2723; padding: 20px; border-radius: 15px; border: 4px solid #f1c40f; width: 90%; max-width: 400px; text-align: center; color: white; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+.shop-items { margin: 20px 0; }
+.shop-items button { width: 100%; padding: 15px; background: linear-gradient(180deg, #f1c40f 0%, #f39c12 100%); border: 2px solid #e67e22; border-radius: 8px; font-weight: bold; cursor: pointer; color: #111; font-size: 1.1rem; box-shadow: 0 4px #e67e22; }
+.shop-items button:active { transform: translateY(4px); box-shadow: 0 0 #e67e22; }
+.close-btn { background: #e74c3c; color: white; padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
 
 .hidden { display: none !important; }
 #notification-area { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 4px #000; pointer-events: none; width: 100%; text-align: center; z-index: 100;}
