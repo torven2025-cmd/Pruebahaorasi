@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Ayuntamiento & Elixir</title>
+    <title>Castle Battle - Combate y Tienda Corregida</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,13 +20,11 @@
         
         <div id="ui-layer">
             
-            <!-- HUD PRINCIPAL -->
             <div id="main-hud">
                 <div id="top-left-controls">
                     <button class="icon-btn" onclick="toggleFullScreen()" id="btn-fs" title="Pantalla Completa">🔲</button>
                 </div>
 
-                <!-- Recursos: Monedas, Elixir, Gemas y Tropas -->
                 <div id="ui-top-right">
                     <div class="res-pill pill-gold">
                         <div class="res-value" id="res-gold">0/2500</div>
@@ -55,13 +53,11 @@
                 </button>
             </div>
 
-            <!-- CONTROLES DE COLOCACIÓN -->
             <div id="placement-controls" class="hidden">
                 <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
                 <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
             </div>
 
-            <!-- CONTROLES DE EDICIÓN -->
             <div id="edit-controls" class="hidden">
                 <button id="btn-upgrade" onclick="upgradeBuilding()" style="display:none;">✨ Mejorar (1000🪙)</button>
                 <button id="btn-train-troop" onclick="trainTroop()" style="display:none;">🗡️ Entrenar (25💧)</button>
@@ -82,7 +78,6 @@
                 <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
             </div>
 
-            <!-- UI DE COMBATE CON TEMPORIZADORES -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
@@ -92,7 +87,6 @@
                 </div>
             </div>
 
-            <!-- MODAL DE LA TIENDA -->
             <div id="shop-ui" class="hidden">
                 <div class="shop-panel">
                     <div class="shop-top-icon">
@@ -119,30 +113,22 @@
                             </button>
                         </div>
 
+                        <!-- RECURSOS ACTUALIZADOS -->
                         <div id="tab-recursos" class="shop-grid hidden">
                             <button class="shop-card" onclick="selectBuilding('builder_hut')">
                                 <h3>Choza de constructor</h3><p class="desc">Básico para construir</p><div class="price">100🪙</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('elixir_pump')">
-                                <h3>Recolector Elixir</h3><p class="desc">(Mina de piedra)</p><div class="price">50🪙 150💧</div>
+                                <h3>Recolector Elixir</h3><p class="desc">Extrae elixir del subsuelo</p><div class="price">50🪙 150💧</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('goldmine')">
                                 <h3>Mina de oro</h3><p class="desc">Extrae monedas</p><div class="price">250🪙 250💧</div>
                             </button>
-                            <button class="shop-card" onclick="selectBuilding('lumbermill')">
-                                <h3>Choza de leñador</h3><p class="desc">Produce recursos</p><div class="price">150🪙 50💧</div>
+                            <button class="shop-card" onclick="selectBuilding('vault_elixir')">
+                                <h3>Almacén de Elixir</h3><p class="desc">Guarda elixir (3x3)</p><div class="price">200🪙 200💧</div>
                             </button>
-                            <button class="shop-card" onclick="selectBuilding('miner_hut')">
-                                <h3>Choza de minero</h3><p class="desc">Mejora recolección</p><div class="price">150🪙 150💧</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('vault_stone')">
-                                <h3>Almacén Piedra</h3><p class="desc">Guarda elixir</p><div class="price">200🪙 200💧</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('vault_wood')">
-                                <h3>Almacén Madera</h3><p class="desc">Guarda monedas</p><div class="price">200🪙 200💧</div>
-                            </button>
-                            <button class="shop-card" onclick="selectBuilding('vault_coins')">
-                                <h3>Almacén Monedas</h3><p class="desc">Alta capacidad</p><div class="price">400🪙 400💧</div>
+                            <button class="shop-card" onclick="selectBuilding('vault_gold')">
+                                <h3>Almacén de Monedas</h3><p class="desc">Guarda monedas (3x3)</p><div class="price">400🪙 400💧</div>
                             </button>
                         </div>
 
