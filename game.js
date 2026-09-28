@@ -8,69 +8,69 @@ window.addEventListener('resize', resizeCanvas); resizeCanvas();
 const TILE_SIZE = 25; 
 let gridSize = 40; 
 
-// SIN LOCALSTORAGE - Ideal para testear en modo incógnito sin que se rompa
-let resources = { wood: 1000, stone: 1000, points: 0, troops: 0, coins: 0 };
+// SIN GUARDADO LOCAL - ECONOMÍA: MONEDAS, ELIXIR, GEMAS
+let resources = { gold: 1500, elixir: 1500, points: 0, troops: 5, gems: 0 };
 let buildings = [];
 
+// DATOS DE ENTIDADES (Adaptados a Oro y Elixir)
 const entityData = {
-    castle: { wood: 1000, stone: 1000, color: '#4a4a4a', emoji: '🏰', maxHp: 1000, w: 4, h: 4 },
-    camp: { wood: 200, stone: 150, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5, w: 3, h: 3 },
-    barracks: { wood: 300, stone: 200, color: '#d35400', emoji: '⚔️', maxHp: 250, w: 3, h: 3 }, 
-    builder_hut: { wood: 100, stone: 0, color: '#f39c12', emoji: '🏠', maxHp: 100, w: 2, h: 2 },
-    lumbermill: { wood: 150, stone: 50, color: '#27ae60', emoji: '🪚', maxHp: 150, w: 3, h: 3 },
-    mine: { wood: 50, stone: 150, color: '#95a5a6', emoji: '⛏️', maxHp: 150, w: 3, h: 3 },
-    goldmine: { wood: 250, stone: 250, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150, w: 3, h: 3 },
-    miner_hut: { wood: 150, stone: 150, color: '#7f8c8d', emoji: '⛺⛏️', maxHp: 150, w: 2, h: 2 },
-    vault_wood: { wood: 200, stone: 200, color: '#d35400', emoji: '📦🪵', maxHp: 400, w: 3, h: 3 },
-    vault_stone: { wood: 200, stone: 200, color: '#8e44ad', emoji: '📦🪨', maxHp: 400, w: 3, h: 3 },
-    vault_coins: { wood: 400, stone: 400, color: '#2ecc71', emoji: '🏦', maxHp: 400, capacityCoins: 500, w: 3, h: 3 }, 
-    cannon: { wood: 200, stone: 200, color: '#7f8c8d', emoji: '💣', maxHp: 300, damage: 25, range: 180, w: 3, h: 3 },
-    tower: { wood: 250, stone: 250, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 15, range: 250, w: 3, h: 3 },
-    wall: { wood: 40, stone: 20, color: '#555', emoji: '🧱', maxHp: 400, w: 1, h: 1 }
+    townhall: { color: '#4a4a4a', emoji: '🏛️', w: 4, h: 4 }, // Sus stats dependen del nivel
+    camp: { gold: 200, elixir: 150, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5, w: 3, h: 3 },
+    barracks: { gold: 300, elixir: 200, color: '#d35400', emoji: '⚔️', maxHp: 250, w: 3, h: 3 }, 
+    builder_hut: { gold: 100, elixir: 0, color: '#f39c12', emoji: '🏠', maxHp: 100, w: 2, h: 2 },
+    lumbermill: { gold: 150, elixir: 50, color: '#27ae60', emoji: '🪚', maxHp: 150, w: 3, h: 3 },
+    elixir_pump: { gold: 50, elixir: 150, color: '#95a5a6', emoji: '⛏️', maxHp: 150, w: 3, h: 3 },
+    goldmine: { gold: 250, elixir: 250, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150, w: 3, h: 3 },
+    miner_hut: { gold: 150, elixir: 150, color: '#7f8c8d', emoji: '⛺⛏️', maxHp: 150, w: 2, h: 2 },
+    vault_wood: { gold: 200, elixir: 200, color: '#d35400', emoji: '📦', maxHp: 400, w: 3, h: 3 },
+    vault_stone: { gold: 200, elixir: 200, color: '#8e44ad', emoji: '📦', maxHp: 400, w: 3, h: 3 },
+    vault_coins: { gold: 400, elixir: 400, color: '#2ecc71', emoji: '🏦', maxHp: 400, w: 3, h: 3 }, 
+    cannon: { gold: 200, elixir: 200, color: '#7f8c8d', emoji: '💣', maxHp: 300, damage: 25, range: 180, w: 3, h: 3 },
+    tower: { gold: 250, elixir: 250, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 15, range: 250, w: 3, h: 3 },
+    wall: { gold: 40, elixir: 20, color: '#555', emoji: '🧱', maxHp: 400, w: 1, h: 1 }
 };
 
-let maxTroops = 0; let maxCoins = 100;
+let maxTroops = 0; let maxGold = 2500; let maxElixir = 2500;
 let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
 let isBuildMode = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
 
-// ESTADOS DEL COMBATE CON TEMPORIZADORES
-let inCombat = false;
-let combatPhase = 'none'; // 'none', 'prep', 'battle', 'end'
-let combatSeconds = 0;
-let combatTimerInterval = null;
+// ESTADOS COMBATE
+let inCombat = false; let combatPhase = 'none'; let combatSeconds = 0; let combatTimerInterval = null;
 
 let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
 let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
 
-// Base inicial
+// CREACIÓN BASE INICIAL (Con Ayuntamiento Nivel 2)
 if (buildings.length === 0) {
-    buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp });
+    buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 2, ...entityData.townhall, maxHp: 800, hp: 800 });
     buildings.push({ id: 2, gridX: 14, gridY: 18, type: 'camp', ...entityData.camp, hp: entityData.camp.maxHp });
     buildings.push({ id: 3, gridX: 23, gridY: 18, type: 'barracks', ...entityData.barracks, hp: entityData.barracks.maxHp });
     updateCapacity();
 }
 
-// Economía Pasiva 
-let goldGenTimer = 0;
+// GENERACIÓN DE RECURSOS (Sin Deterioro)
+let resourceTimer = 0;
 setInterval(() => {
     if (inCombat) return;
-    let woodGen = 0, stoneGen = 0, goldGen = 0;
-    goldGenTimer++;
+    let goldGen = 0, elixirGen = 0;
+    resourceTimer++;
 
     buildings.forEach(b => {
         if (b.hp > 0) {
-            if (b.type === 'castle') { woodGen += 1; stoneGen += 1; }
-            if (b.type === 'lumbermill') woodGen += 2;
-            if (b.type === 'mine') stoneGen += 2;
-            if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
+            if (b.type === 'townhall') { goldGen += 1; elixirGen += 1; }
+            if (b.type === 'goldmine') goldGen += 2;
+            if (b.type === 'elixir_pump') elixirGen += 2;
         }
     });
 
-    if (goldGenTimer >= 3) goldGenTimer = 0;
-    if (woodGen > 0 || stoneGen > 0) { resources.wood += woodGen; resources.stone += stoneGen; }
-    if (goldGen > 0 && resources.coins < maxCoins) { resources.coins = Math.min(resources.coins + goldGen, maxCoins); }
-    updateUI();
+    if (resourceTimer >= 3) resourceTimer = 0;
+    
+    if (goldGen > 0 || elixirGen > 0) { 
+        resources.gold = Math.min(resources.gold + goldGen, maxGold);
+        resources.elixir = Math.min(resources.elixir + elixirGen, maxElixir);
+        updateUI();
+    }
 }, 1000);
 
 // BUCLE DE COMBATE
@@ -79,8 +79,8 @@ function update() {
     if (inCombat && combatPhase === 'battle') {
         buildings = buildings.filter(b => b.hp > 0);
         
-        let castleAlive = buildings.some(b => b.type === 'castle');
-        if (!castleAlive) { resolveCombat('win'); return; }
+        let townhallAlive = buildings.some(b => b.type === 'townhall');
+        if (!townhallAlive) { resolveCombat('win'); return; }
         if (deployedTroops.length === 0 && resources.troops <= 0) { resolveCombat('lose'); return; }
 
         deployedTroops.forEach(troop => {
@@ -92,7 +92,7 @@ function update() {
                 
                 if (dist > (TILE_SIZE + troop.radius)) {
                     troop.x += (dx / dist) * troop.speed; troop.y += (dy / dist) * troop.speed;
-                } else if (frameCount % 60 === 0) troop.target.hp -= troop.damage; // El daño se aplica y la vida baja
+                } else if (frameCount % 60 === 0) troop.target.hp -= troop.damage; 
             }
         });
 
@@ -117,15 +117,13 @@ function update() {
 function getNearestBuilding(x, y) {
     let nearest = null, minDist = Infinity;
     buildings.forEach(b => {
-        let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2;
-        let by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
+        let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
         let dist = Math.hypot(bx - x, by - y);
         if (dist < minDist) { minDist = dist; nearest = b; }
     });
     return nearest;
 }
 
-// ZONA TRANSPARENTE EN COMBATE (Margen de 1 cuadrito alrededor)
 function isRestrictedZone(gX, gY) {
     for (let b of buildings) {
         if (gX >= b.gridX - 1 && gX < b.gridX + b.w + 1 && gY >= b.gridY - 1 && gY < b.gridY + b.h + 1) return true;
@@ -158,7 +156,7 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // DIBUJAR ZONA TRANSPARENTE AL ATACAR
+    // ZONA TRANSPARENTE AL ATACAR
     if (inCombat) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         for (let x = 0; x < gridSize; x++) {
@@ -198,6 +196,10 @@ function draw() {
         if (b.emoji) {
             ctx.fillStyle = 'white'; ctx.font = `${Math.min(bw, bh) * 0.5}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(b.emoji, px + bw/2, py + bh/2);
+            // Nivel del Ayuntamiento
+            if(b.type === 'townhall') {
+                ctx.fillStyle = 'yellow'; ctx.font = `14px Arial`; ctx.fillText('Lv.' + b.level, px + bw/2, py + bh - 15);
+            }
         }
     });
 
@@ -219,7 +221,6 @@ function draw() {
         ctx.strokeRect(px, py, bw, bh); ctx.setLineDash([]);
     }
 
-    // DIBUJAR TROPAS
     deployedTroops.forEach(t => {
         ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
@@ -262,7 +263,7 @@ canvas.addEventListener('pointerdown', e => {
 });
 
 window.addEventListener('pointermove', e => {
-    if (!pointers.has(e.pointerId) || !isCanvasTouch) return; updatePointers(e);
+    if (!pointers.has(e.pointerId)) return; if (!isCanvasTouch) return; updatePointers(e);
 
     if (pointers.size === 1) {
         let pts = Array.from(pointers.values());
@@ -312,28 +313,24 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
-// --- SISTEMA DE COMBATE (Con Temporizadores y Redirección Exacta) ---
+// --- COMBATE CON TEMPORIZADORES ---
 function startCombatMatch() {
     if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en el Cuartel!");
     
-    // Guardar base para restaurarla luego
     mySavedBase = JSON.parse(JSON.stringify(buildings)); 
     
-    // Base enemiga con Castillo
     buildings = [
-        { id: 1, gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp },
+        { id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 2, ...entityData.townhall, hp: 800, maxHp: 800 },
         { id: 4, gridX: 18, gridY: 14, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
         { id: 5, gridX: 23, gridY: 18, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
     ];
     
-    inCombat = true; combatOver = false; deployedTroops = []; lasers = [];
+    inCombat = true; combatPhase = 'prep'; combatSeconds = 10; deployedTroops = []; lasers = [];
     document.getElementById('main-hud').classList.add('hidden'); 
     document.getElementById('combat-ui').classList.remove('hidden');
-    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.0;
-
-    combatPhase = 'prep';
-    combatSeconds = 10;
     document.getElementById('combat-status-text').innerText = "El ataque comienza en:";
+    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
+
     updateCombatTimerUI();
     if(combatTimerInterval) clearInterval(combatTimerInterval);
     combatTimerInterval = setInterval(combatTick, 1000);
@@ -344,23 +341,18 @@ function combatTick() {
     combatSeconds--;
     
     if(combatPhase === 'prep') {
-        if(combatSeconds <= 0) {
-            autoDeployTroops();
-            startBattlePhase();
-        }
+        if(combatSeconds <= 0) { autoDeployTroops(); startBattlePhase(); }
     } else if (combatPhase === 'battle') {
         if(combatSeconds <= 0) {
-            let castle = buildings.find(b => b.type === 'castle');
-            if(castle && castle.hp > 0) resolveCombat('lose_time');
-            else resolveCombat('win');
+            let th = buildings.find(b => b.type === 'townhall');
+            if(th && th.hp > 0) resolveCombat('lose_time'); else resolveCombat('win');
         }
     }
     updateCombatTimerUI();
 }
 
 function startBattlePhase() {
-    combatPhase = 'battle';
-    combatSeconds = 180; // 3 Minutos
+    combatPhase = 'battle'; combatSeconds = 180; 
     document.getElementById('combat-status-text').innerText = "Tiempo restante:";
     updateCombatTimerUI();
 }
@@ -375,8 +367,7 @@ function autoDeployTroops() {
     while(resources.troops > 0) {
         resources.troops--;
         let x, y, attempts = 0;
-        do {
-            x = Math.random() * boundary; y = Math.random() * boundary; attempts++;
+        do { x = Math.random() * boundary; y = Math.random() * boundary; attempts++;
         } while (isRestrictedZone(Math.floor(x/TILE_SIZE), Math.floor(y/TILE_SIZE)) && attempts < 50);
         deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
     }
@@ -385,48 +376,45 @@ function autoDeployTroops() {
 
 function deployTroop(x, y) {
     if (resources.troops <= 0) return;
-    if (combatPhase === 'prep') startBattlePhase();
+    if (combatPhase === 'prep') startBattlePhase(); 
     resources.troops--; updateUI();
     deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
 }
 
 function resolveCombat(type) {
     if (combatPhase === 'end') return;
-    combatPhase = 'end'; combatOver = true;
+    combatPhase = 'end';
     if(combatTimerInterval) clearInterval(combatTimerInterval);
     
-    // Regresan las tropas vivas y las que no soltaste
     let surviving = deployedTroops.length + resources.troops; 
     resources.troops = Math.min(maxTroops, surviving);
     
     if (type === 'win') {
-        let lootedCoins = 50; resources.wood += 250; resources.stone += 250; resources.points += 20; 
-        resources.coins = Math.min(resources.coins + lootedCoins, maxCoins);
+        let lootedCoins = 50; resources.gold += 250; resources.elixir += 250; resources.points += 20; 
+        resources.gems += 5; // Recompensa extra en gemas
         showNotification(`¡VICTORIA!\nRegresan: ${surviving} 🗡️`); 
     } else if (type === 'lose' || type === 'lose_time') { 
-        showNotification(`DERROTA...\nRegresan: ${surviving} 🗡️`);
+        showNotification(`DERROTA... El Ayuntamiento sobrevivió.\nRegresan: ${surviving} 🗡️`);
     } else if (type === 'surrender') { 
         showNotification(`TE RENDISTE.\nRegresan: ${surviving} 🗡️`); 
     }
-    updateUI(); setTimeout(endCombat, 2500);
+    updateUI(); setTimeout(endCombat, 3000);
 }
 
 function surrender() { resolveCombat('surrender'); }
 
 function endCombat() {
-    inCombat = false; combatOver = false; combatPhase = 'none'; deployedTroops = []; lasers = []; 
-    // Restaurar base vieja profunda
+    inCombat = false; combatPhase = 'none'; deployedTroops = []; lasers = []; 
     buildings = JSON.parse(JSON.stringify(mySavedBase)); 
     updateCapacity(); 
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.2;
-
     document.getElementById('combat-ui').classList.add('hidden'); 
     document.getElementById('main-hud').classList.remove('hidden');
     updateUI();
 }
 
 // --- GESTIÓN DE TIENDA Y CONSTRUCCIÓN ---
-function openShop() { isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('shop-wood').innerText = Math.floor(resources.wood); document.getElementById('shop-stone').innerText = Math.floor(resources.stone); document.getElementById('shop-coins').innerText = Math.floor(resources.coins); }
+function openShop() { isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('shop-wood').innerText = Math.floor(resources.gold); document.getElementById('shop-stone').innerText = Math.floor(resources.elixir); document.getElementById('shop-coins').innerText = Math.floor(resources.gems); }
 function closeShop() { isBuildMode = false; document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
 
 function switchShopTab(tabId) {
@@ -457,25 +445,23 @@ function confirmPlacement() {
     if (isOccupied(pGridX, pGridY, pendingBuildingData.w, pendingBuildingData.h, relocatingBuilding ? relocatingBuilding.id : null)) return showNotification("Casilla ocupada");
     
     if (isRelocating) {
-        let dmg = Math.floor(relocatingBuilding.maxHp * 0.05); 
-        relocatingBuilding.hp = Math.max(0, relocatingBuilding.hp - dmg);
         relocatingBuilding.gridX = pGridX; relocatingBuilding.gridY = pGridY;
         buildings.push(relocatingBuilding); isRelocating = false; relocatingBuilding = null;
-        showNotification("Estructura reubicada (-5% HP)"); pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
+        showNotification("Estructura reubicada"); pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
         document.getElementById('placement-controls').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden');
         selectedBuildingId = null; isBuildMode = false; return;
     }
 
-    if (resources.wood < pendingBuildingData.wood || resources.stone < pendingBuildingData.stone) return showNotification("Recursos insuficientes");
-    resources.wood -= pendingBuildingData.wood; resources.stone -= pendingBuildingData.stone;
+    if (resources.gold < pendingBuildingData.gold || resources.elixir < pendingBuildingData.elixir) return showNotification("Recursos insuficientes");
+    resources.gold -= pendingBuildingData.gold; resources.elixir -= pendingBuildingData.elixir;
     buildings.push({ id: Date.now(), gridX: pGridX, gridY: pGridY, type: pendingBuildingType, ...pendingBuildingData, hp: pendingBuildingData.maxHp });
     updateCapacity(); updateUI(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- EDICIÓN ---
+// --- EDICIÓN (Mejorar, Entrenar) ---
 function getRepairCost(b) {
     let data = entityData[b.type]; let ratio = 1 - (b.hp / b.maxHp);
-    return { wood: Math.ceil((data.wood || 0) * ratio), stone: Math.ceil((data.stone || 0) * ratio) };
+    return { gold: Math.ceil((data.gold || 0) * ratio), elixir: Math.ceil((data.elixir || 0) * ratio) };
 }
 
 function selectExistingBuilding(id) {
@@ -490,15 +476,29 @@ function selectExistingBuilding(id) {
     
     if (b.hp <= 0) {
         document.getElementById('ruin-controls').classList.remove('hidden');
-        document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.wood}🪵 ${data.stone}🪨</small>`;
+        
+        let btnDestroyRuin = document.getElementById('btn-destroy-ruin');
+        if(b.type === 'townhall') btnDestroyRuin.style.display = 'none'; else btnDestroyRuin.style.display = 'block';
+
+        document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.gold}🪙 ${data.elixir}💧</small>`;
     } else {
         document.getElementById('edit-controls').classList.remove('hidden');
+        
         let btnTrain = document.getElementById('btn-train-troop');
         if (b.type === 'barracks') { btnTrain.style.display = 'block'; } else { btnTrain.style.display = 'none'; }
+
+        // MEJORAR AYUNTAMIENTO
+        let btnUpgrade = document.getElementById('btn-upgrade');
+        if (b.type === 'townhall' && b.level === 1) { btnUpgrade.style.display = 'block'; } else { btnUpgrade.style.display = 'none'; }
+
+        // OCULTAR DESTRUIR SI ES AYUNTAMIENTO
+        let btnDestroy = document.getElementById('btn-destroy-init');
+        if (b.type === 'townhall') { btnDestroy.style.display = 'none'; } else { btnDestroy.style.display = 'block'; }
+
         let btnRepair = document.getElementById('btn-repair');
         if (b.hp < b.maxHp) {
             let cost = getRepairCost(b); btnRepair.style.display = 'block';
-            btnRepair.innerHTML = `🔨 Reparar<br><small>${cost.wood}🪵 ${cost.stone}🪨</small>`;
+            btnRepair.innerHTML = `🔨 Reparar<br><small>${cost.gold}🪙 ${cost.elixir}💧</small>`;
         } else { btnRepair.style.display = 'none'; }
     }
 }
@@ -511,27 +511,38 @@ function cancelEdit() {
 
 function repairBuilding() {
     let b = buildings.find(x => x.id === selectedBuildingId); let cost = getRepairCost(b);
-    if (resources.wood >= cost.wood && resources.stone >= cost.stone) {
-        resources.wood -= cost.wood; resources.stone -= cost.stone;
+    if (resources.gold >= cost.gold && resources.elixir >= cost.elixir) {
+        resources.gold -= cost.gold; resources.elixir -= cost.elixir;
         b.hp = b.maxHp; updateCapacity(); updateUI(); showNotification("Estructura Reparada"); cancelEdit();
     } else showNotification("Recursos insuficientes");
 }
 
 function rebuildBuilding() {
     let b = buildings.find(x => x.id === selectedBuildingId); let data = entityData[b.type];
-    if (resources.wood >= data.wood && resources.stone >= data.stone) {
-        resources.wood -= data.wood; resources.stone -= data.stone;
+    if (resources.gold >= data.gold && resources.elixir >= data.elixir) {
+        resources.gold -= data.gold; resources.elixir -= data.elixir;
         b.hp = b.maxHp; updateCapacity(); updateUI(); showNotification("Estructura Reconstruida"); cancelEdit();
     } else showNotification("Recursos insuficientes");
+}
+
+function upgradeBuilding() {
+    let b = buildings.find(x => x.id === selectedBuildingId);
+    if (b && b.type === 'townhall' && b.level === 1) {
+        if (resources.gold >= 1000) {
+            resources.gold -= 1000;
+            b.level = 2; b.maxHp = 800; b.hp = 800;
+            updateCapacity(); updateUI(); showNotification("¡Ayuntamiento nivel 2!"); cancelEdit();
+        } else showNotification("Faltan Monedas para mejorar.");
+    }
 }
 
 function initDestroy() { document.getElementById('edit-controls').classList.add('hidden'); document.getElementById('ruin-controls').classList.add('hidden'); document.getElementById('destroy-controls').classList.remove('hidden'); }
 function confirmDestroy() {
     let b = buildings.find(x => x.id === selectedBuildingId);
     if (b) {
-        let refundWood = Math.floor((entityData[b.type].wood || 0) * 0.4); let refundStone = Math.floor((entityData[b.type].stone || 0) * 0.4);
-        resources.wood += refundWood; resources.stone += refundStone; buildings = buildings.filter(x => x.id !== selectedBuildingId);
-        updateCapacity(); updateUI(); showNotification(`Destruido: +${refundWood}🪵 +${refundStone}🪨 devueltos`);
+        let refundGold = Math.floor((entityData[b.type].gold || 0) * 0.4); let refundElixir = Math.floor((entityData[b.type].elixir || 0) * 0.4);
+        resources.gold += refundGold; resources.elixir += refundElixir; buildings = buildings.filter(x => x.id !== selectedBuildingId);
+        updateCapacity(); updateUI(); showNotification(`Destruido: +${refundGold}🪙 +${refundElixir}💧`);
     }
     cancelEdit();
 }
@@ -545,25 +556,27 @@ function startRelocate() {
 }
 
 function updateCapacity() { 
+    let th = buildings.find(b => b.type === 'townhall');
+    let baseCap = (th && th.level === 2) ? 2500 : 1000;
+    maxGold = baseCap + (buildings.filter(b => b.type === 'vault_wood' || b.type === 'vault_coins').filter(b => b.hp > 0).length * 500);
+    maxElixir = baseCap + (buildings.filter(b => b.type === 'vault_stone' && b.hp > 0).length * 500);
     maxTroops = buildings.filter(b => b.type === 'camp' && b.hp > 0).length * entityData.camp.capacity; 
-    maxCoins = 100 + (buildings.filter(b => b.type === 'vault_coins' && b.hp > 0).length * entityData.vault_coins.capacityCoins);
 }
 
 function trainTroop() {
     updateCapacity();
-    if (resources.troops >= maxTroops) return showNotification(`Campamentos llenos (${maxTroops} max). Construye más campamentos.`);
-    if (resources.wood >= 25) { resources.wood -= 25; resources.troops++; updateUI(); showNotification("¡Bárbaro entrenado!"); cancelEdit();
-    } else showNotification("Falta madera");
+    if (resources.troops >= maxTroops) return showNotification(`Campamentos llenos (${maxTroops} max). Construye más.`);
+    if (resources.elixir >= 25) { resources.elixir -= 25; resources.troops++; updateUI(); showNotification("¡Bárbaro entrenado!"); cancelEdit();
+    } else showNotification("Falta Elixir (25💧)");
 }
 
 function updateUI() {
-    document.getElementById('res-wood').innerText = Math.floor(resources.wood); document.getElementById('res-stone').innerText = Math.floor(resources.stone);
-    document.getElementById('res-coins').innerText = `${Math.floor(resources.coins)}/${maxCoins}`;
-    document.getElementById('res-troops').innerText = `${resources.troops}/${maxTroops}`; document.getElementById('res-points').innerText = resources.points;
+    document.getElementById('res-gold').innerText = `${Math.floor(resources.gold)}/${maxGold}`;
+    document.getElementById('res-elixir').innerText = `${Math.floor(resources.elixir)}/${maxElixir}`;
+    document.getElementById('res-gems').innerText = Math.floor(resources.gems);
+    document.getElementById('res-troops').innerText = `${resources.troops}/${maxTroops}`;
+    document.getElementById('res-points').innerText = resources.points;
 }
-
-function changeZoom(amount) { camera.zoom = Math.max(0.4, Math.min(camera.zoom + amount, 3.0)); }
-function showNotification(msg) { uiLog.innerText = msg; setTimeout(() => uiLog.innerText = "", 2500); }
 
 function toggleFullScreen() {
     let doc = window.document; let docEl = doc.documentElement;
