@@ -12,7 +12,6 @@ let gridSize = (savedData && savedData.gridSize) ? savedData.gridSize : 15;
 let expansionCost = (savedData && savedData.expansionCost) ? savedData.expansionCost : 100;
 let lastSaveTime = (savedData && savedData.lastSaveTime) ? savedData.lastSaveTime : Date.now();
 
-// RECURSOS INICIALES (Aumentados para que puedas empezar con los nuevos precios)
 let resources = savedData ? savedData.resources : { wood: 500, stone: 500, points: 0, troops: 0, coins: 0 };
 if (resources.coins === undefined) resources.coins = 0; 
 
@@ -21,7 +20,7 @@ let maxTroops = 0;
 let maxCoins = 100;
 
 let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1 };
-let isBuildMode = false; let inCombat = false; let frameCount = 0; 
+let isBuildMode = false; let inCombat = false; let combatOver = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
 
 let pendingBuildingType = null;
@@ -32,7 +31,6 @@ let selectedBuildingId = null;
 let isRelocating = false;
 let relocatingBuilding = null;
 
-// NUEVOS COSTOS MULTIPLICADOS
 const entityData = {
     castle: { wood: 1000, stone: 1000, color: '#4a4a4a', emoji: '🏰', maxHp: 1000 },
     lumbermill: { wood: 150, stone: 50, color: '#27ae60', emoji: '🪚', maxHp: 150 },
@@ -49,14 +47,12 @@ if (buildings.length === 0) {
     saveGame();
 }
 
-// CALCULAR DETERIORO OFFLINE AL ENTRAR (24 horas = 86400 segundos para llegar a 0)
 let offlineSeconds = (Date.now() - lastSaveTime) / 1000;
 buildings.forEach(b => {
     let decay = b.maxHp * (offlineSeconds / 86400);
     b.hp = Math.max(0, b.hp - decay);
 });
 
-// ECONOMÍA PASIVA Y DETERIORO EN TIEMPO REAL
 let goldGenTimer = 0;
 setInterval(() => {
     if (inCombat) return;
@@ -64,14 +60,11 @@ setInterval(() => {
     goldGenTimer++;
 
     buildings.forEach(b => {
-        // Solo las estructuras con HP > 0 generan recursos
         if (b.hp > 0) {
             if (b.type === 'castle') { woodGen += 1; stoneGen += 1; }
             if (b.type === 'lumbermill') woodGen += 2;
             if (b.type === 'mine') stoneGen += 2;
             if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
-            
-            // Deterioro por segundo (Vida total / 86400 segundos)
             b.hp = Math.max(0, b.hp - (b.maxHp / 86400));
         }
     });
@@ -85,15 +78,17 @@ setInterval(() => {
         uiNeedsUpdate = true; 
     }
     
-    // Guardamos constantemente para no perder progreso de deterioro ni farmeo
     if (uiNeedsUpdate) { updateUI(); saveGame(); }
 }, 1000);
 
 function update() {
     frameCount++;
-    if (inCombat) {
+    if (inCombat && !combatOver) {
         buildings = buildings.filter(b => b.hp > 0);
-        if (buildings.length === 0 && deployedTroops.length > 0) { winCombat(); return; }
+        
+        // Condiciones de fin de batalla
+        if (buildings.length === 0 && deployedTroops.length > 0) { resolveCombat('win'); return; }
+        if (deployedTroops.length === 0 && resources.troops <= 0 && buildings.length > 0) { resolveCombat('lose'); return; }
 
         deployedTroops.forEach(troop => {
             if (!troop.target || troop.target.hp <= 0) troop.target = getNearestBuilding(troop.x, troop.y);
@@ -121,7 +116,6 @@ function update() {
         }
         deployedTroops = deployedTroops.filter(t => t.hp > 0);
         lasers.forEach(l => l.life--); lasers = lasers.filter(l => l.life > 0);
-        if (deployedTroops.length === 0 && resources.troops <= 0 && buildings.length > 0) loseCombat();
     }
 }
 
@@ -158,7 +152,6 @@ function draw() {
     buildings.forEach(b => {
         let px = b.gridX * TILE_SIZE, py = b.gridY * TILE_SIZE;
         
-        // ESTADO RUINA (100% Destruida)
         if (b.hp <= 0) {
             ctx.fillStyle = '#333'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
             if (isBuildMode && selectedBuildingId === b.id) {
@@ -168,10 +161,9 @@ function draw() {
             }
             ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText('🏚️', px + TILE_SIZE/2, py + TILE_SIZE/2);
-            return; // No dibujar barra de vida
+            return; 
         }
 
-        // ESTADO NORMAL O DAÑADO
         ctx.fillStyle = b.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         if (isBuildMode && selectedBuildingId === b.id) {
             ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
@@ -184,7 +176,6 @@ function draw() {
             ctx.fillText(b.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2);
         }
         
-        // Barra de Vida
         if (b.hp > 0 && b.hp < b.maxHp) {
             ctx.fillStyle = 'black'; ctx.fillRect(px, py - 10, TILE_SIZE, 6);
             ctx.fillStyle = (b.hp/b.maxHp > 0.5) ? '#2ecc71' : '#e74c3c'; 
@@ -192,18 +183,31 @@ function draw() {
         }
     });
 
+    // NUEVO SISTEMA VISUAL: Franja de carga en reversa
     if (pendingBuildingData && pGridX >= 0 && pGridY >= 0) {
         let px = pGridX * TILE_SIZE; let py = pGridY * TILE_SIZE;
         let isOccupied = buildings.some(b => b.gridX === pGridX && b.gridY === pGridY);
-        ctx.fillStyle = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(46, 204, 113, 0.5)';
+        
+        // 1. Dibujar estructura semitransparente (sin fondo de caja invasiva)
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = pendingBuildingData.color; 
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-        ctx.globalAlpha = 0.8;
-        ctx.fillStyle = pendingBuildingData.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         if (pendingBuildingData.emoji) {
-            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`;
+            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(pendingBuildingData.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2);
         }
         ctx.globalAlpha = 1.0;
+
+        // 2. Animación de "Carga en reversa" alrededor del perímetro
+        let perimeter = TILE_SIZE * 4;
+        let p = 1 - ((frameCount % 90) / 90); // Va de 1.0 a 0.0 suavemente
+        
+        ctx.strokeStyle = isOccupied ? '#e74c3c' : '#2ecc71';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([perimeter * p, perimeter]);
+        ctx.lineDashOffset = 0;
+        ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.setLineDash([]); // Reset vital para el resto del canvas
     }
 
     deployedTroops.forEach(t => {
@@ -280,7 +284,7 @@ window.addEventListener('pointerup', e => {
         let worldX = ((e.clientX - canvas.width/2) / camera.zoom) + camera.x;
         let worldY = ((e.clientY - canvas.height/2) / camera.zoom) + camera.y;
         
-        if (inCombat) {
+        if (inCombat && !combatOver) {
             deployTroop(worldX, worldY);
         } else if (isBuildMode && !pendingBuildingData) {
             let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
@@ -334,7 +338,7 @@ function confirmPlacement() {
     if (buildings.some(b => b.gridX === pGridX && b.gridY === pGridY)) return showNotification("Casilla ocupada");
     
     if (isRelocating) {
-        let dmg = Math.floor(relocatingBuilding.maxHp * 0.05); // Pierde 5% de vida al mover
+        let dmg = Math.floor(relocatingBuilding.maxHp * 0.05); 
         relocatingBuilding.hp = Math.max(0, relocatingBuilding.hp - dmg);
         relocatingBuilding.gridX = pGridX; relocatingBuilding.gridY = pGridY;
         
@@ -354,7 +358,6 @@ function confirmPlacement() {
     updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- EDICIÓN (REPARAR, RECONSTRUIR, REUBICAR, DESTRUIR) ---
 function getRepairCost(b) {
     let data = entityData[b.type]; let ratio = 1 - (b.hp / b.maxHp);
     return { wood: Math.ceil((data.wood || 0) * ratio), stone: Math.ceil((data.stone || 0) * ratio) };
@@ -372,11 +375,9 @@ function selectExistingBuilding(id) {
     document.getElementById('ruin-controls').classList.add('hidden');
     
     if (b.hp <= 0) {
-        // ES UNA RUINA
         document.getElementById('ruin-controls').classList.remove('hidden');
         document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.wood}🪵 ${data.stone}🪨</small>`;
     } else {
-        // ESTÁ VIVA O DAÑADA
         document.getElementById('edit-controls').classList.remove('hidden');
         let btnRepair = document.getElementById('btn-repair');
         if (b.hp < b.maxHp) {
@@ -384,7 +385,7 @@ function selectExistingBuilding(id) {
             btnRepair.style.display = 'block';
             btnRepair.innerHTML = `🔨 Reparar<br><small>${cost.wood}🪵 ${cost.stone}🪨</small>`;
         } else {
-            btnRepair.style.display = 'none'; // Si está 100% no se muestra reparar
+            btnRepair.style.display = 'none'; 
         }
     }
 }
@@ -473,29 +474,49 @@ function startCombatMatch() {
         { id: 4, gridX: 7, gridY: 5, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
         { id: 5, gridX: 7, gridY: 9, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
     ];
-    inCombat = true; deployedTroops = []; lasers = [];
+    inCombat = true; combatOver = false; deployedTroops = []; lasers = [];
     document.getElementById('normal-ui').classList.add('hidden'); document.getElementById('combat-ui').classList.remove('hidden');
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
 }
 
 function deployTroop(x, y) {
-    if (resources.troops <= 0) return showNotification("¡No te quedan tropas!");
+    if (!inCombat || combatOver || resources.troops <= 0) return showNotification("¡No te quedan tropas!");
     let boundary = gridSize * TILE_SIZE;
     if (x > 2*TILE_SIZE && x < boundary - 2*TILE_SIZE && y > 2*TILE_SIZE && y < boundary - 2*TILE_SIZE) return showNotification("Despliega tropas en las afueras");
     resources.troops--; updateUI();
     deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 8, target: null });
 }
 
-function winCombat() { 
-    let lootedCoins = 50;
-    showNotification(`¡VICTORIA! 250🪵 250🪨 ${lootedCoins}🪙 20🏆`); 
-    resources.wood += 250; resources.stone += 250; resources.points += 20; 
-    resources.coins = Math.min(resources.coins + lootedCoins, maxCoins);
-    setTimeout(endCombat, 2500); 
+// NUEVO: Sistema de Supervivencia Centralizado
+function resolveCombat(type) {
+    if (combatOver) return;
+    combatOver = true;
+    
+    let surviving = deployedTroops.length; 
+    resources.troops = Math.min(maxTroops, resources.troops + surviving);
+    
+    if (type === 'win') {
+        let lootedCoins = 50;
+        resources.wood += 250; resources.stone += 250; resources.points += 20; 
+        resources.coins = Math.min(resources.coins + lootedCoins, maxCoins);
+        showNotification(`¡VICTORIA! 250🪵 250🪨 ${lootedCoins}🪙\nSobreviven: ${surviving} 🗡️`); 
+    } else if (type === 'lose') {
+        showNotification(`DERROTA...\nSobreviven: ${surviving} 🗡️`);
+    } else if (type === 'surrender') {
+        showNotification(`TE RENDISTE.\nRegresan: ${surviving} 🗡️`);
+    }
+    
+    updateUI(); saveGame();
+    setTimeout(endCombat, 2500);
 }
-function loseCombat() { showNotification("DERROTA... Tus tropas perecieron."); setTimeout(endCombat, 2500); }
+
+function winCombat() { resolveCombat('win'); }
+function loseCombat() { resolveCombat('lose'); }
+function surrender() { resolveCombat('surrender'); }
+
 function endCombat() {
-    inCombat = false; deployedTroops = []; lasers = []; buildings = mySavedBase; updateCapacity(); 
+    inCombat = false; combatOver = false; deployedTroops = []; lasers = []; 
+    buildings = mySavedBase; updateCapacity(); 
     document.getElementById('combat-ui').classList.add('hidden'); document.getElementById('normal-ui').classList.remove('hidden');
     updateUI(); saveGame();
 }
