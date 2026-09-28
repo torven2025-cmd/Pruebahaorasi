@@ -1,3 +1,24 @@
+/* Forzar modo horizontal visualmente */
+#rotate-device-screen {
+    display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: #111; z-index: 9999; color: white; text-align: center;
+    justify-content: center; align-items: center; flex-direction: column;
+}
+.rotate-content { padding: 20px; border: 2px dashed #f1c40f; border-radius: 15px; width: 80%; }
+.rotate-icon { font-size: 4rem; display: block; margin-bottom: 20px; animation: rotateAnim 2s infinite ease-in-out;}
+
+@keyframes rotateAnim {
+    0% { transform: rotate(0deg); }
+    50% { transform: rotate(-90deg); }
+    100% { transform: rotate(-90deg); }
+}
+
+@media screen and (orientation: portrait) {
+    #rotate-device-screen { display: flex; }
+    #game-container { display: none; }
+}
+
+/* Reglas generales del juego */
 * {
     margin: 0; padding: 0; box-sizing: border-box;
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
