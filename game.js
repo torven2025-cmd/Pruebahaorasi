@@ -8,12 +8,11 @@ window.addEventListener('resize', resizeCanvas); resizeCanvas();
 const TILE_SIZE = 50; 
 let savedData = JSON.parse(localStorage.getItem('castleBattleSave')) || null;
 
-// Evitar errores de "undefined" de partidas viejas parcheando los datos
 let gridSize = (savedData && savedData.gridSize) ? savedData.gridSize : 15;
 let expansionCost = (savedData && savedData.expansionCost) ? savedData.expansionCost : 100;
 
 let resources = savedData ? savedData.resources : { wood: 300, stone: 300, points: 0, troops: 0, coins: 0 };
-if (resources.coins === undefined) resources.coins = 0; // Parche para "undefined"
+if (resources.coins === undefined) resources.coins = 0; 
 
 let buildings = savedData ? savedData.buildings : [];
 let maxTroops = 0; 
@@ -27,12 +26,17 @@ let pendingBuildingType = null;
 let pendingBuildingData = null;
 let pGridX = -1; let pGridY = -1;
 
+// NUEVO: Variables para edición y reubicación
+let selectedBuildingId = null;
+let isRelocating = false;
+let relocatingBuilding = null;
+
 const entityData = {
     castle: { color: '#4a4a4a', emoji: '🏰', maxHp: 1000 },
     lumbermill: { wood: 20, stone: 10, color: '#27ae60', emoji: '🪚', maxHp: 150 },
     mine: { wood: 10, stone: 20, color: '#95a5a6', emoji: '⛏️', maxHp: 150 },
-    goldmine: { wood: 50, stone: 50, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150 }, // Mina de oro
-    vault: { wood: 100, stone: 100, color: '#9b59b6', emoji: '🏦', maxHp: 400, capacityCoins: 500 }, // Almacén
+    goldmine: { wood: 50, stone: 50, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150 },
+    vault: { wood: 100, stone: 100, color: '#9b59b6', emoji: '🏦', maxHp: 400, capacityCoins: 500 }, 
     camp: { wood: 50, stone: 30, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5 },
     wall: { wood: 10, stone: 5, color: '#7f8c8d', emoji: '', maxHp: 400 },
     tower: { wood: 20, stone: 15, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 20, range: 200 }
@@ -43,7 +47,6 @@ if (buildings.length === 0) {
     saveGame();
 }
 
-// Economía Pasiva (Incluyendo Oro)
 let goldGenTimer = 0;
 setInterval(() => {
     if (inCombat) return;
@@ -54,7 +57,7 @@ setInterval(() => {
         if (b.type === 'castle') { woodGen += 1; stoneGen += 1; }
         if (b.type === 'lumbermill') woodGen += 2;
         if (b.type === 'mine') stoneGen += 2;
-        if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; // 1 moneda cada 3 segundos
+        if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
     });
 
     if (goldGenTimer >= 3) goldGenTimer = 0;
@@ -138,7 +141,18 @@ function draw() {
     buildings.forEach(b => {
         let px = b.gridX * TILE_SIZE, py = b.gridY * TILE_SIZE;
         ctx.fillStyle = b.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-        ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+        
+        // NUEVO: Efecto amarillo si la estructura está seleccionada para editar
+        if (isBuildMode && selectedBuildingId === b.id) {
+            ctx.strokeStyle = '#f1c40f'; 
+            ctx.lineWidth = 4; 
+            ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+        } else {
+            ctx.strokeStyle = 'rgba(0,0,0,0.6)'; 
+            ctx.lineWidth = 2; 
+            ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+        }
+
         if (b.emoji) {
             ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(b.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2);
@@ -181,7 +195,7 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR MULTI-TÁCTIL ORIGINAL (VERSIÓN 8.0) ---
+// --- MOTOR MULTI-TÁCTIL ORIGINAL ---
 let pointers = new Map();
 let initialCam = { x: 0, y: 0 };
 let startDragPan = { x: 0, y: 0 };
@@ -237,17 +251,32 @@ window.addEventListener('pointermove', e => {
     }
 });
 
+// NUEVO: Selección de estructuras en pointerup
 window.addEventListener('pointerup', e => {
     pointers.delete(e.pointerId);
-    if (pointers.size === 0 && !hasMoved && inCombat) {
+    if (pointers.size === 0 && !hasMoved) {
         let worldX = ((e.clientX - canvas.width/2) / camera.zoom) + camera.x;
         let worldY = ((e.clientY - canvas.height/2) / camera.zoom) + camera.y;
-        deployTroop(worldX, worldY);
+        
+        if (inCombat) {
+            deployTroop(worldX, worldY);
+        } else if (isBuildMode && !pendingBuildingData) {
+            // Lógica para seleccionar edificio con toque
+            let gX = Math.floor(worldX / TILE_SIZE);
+            let gY = Math.floor(worldY / TILE_SIZE);
+            let clickedBuilding = buildings.find(b => b.gridX === gX && b.gridY === gY);
+            
+            if (clickedBuilding) {
+                selectExistingBuilding(clickedBuilding.id);
+            } else if (selectedBuildingId) {
+                cancelEdit(); // Tocar espacio vacío deselecciona
+            }
+        }
     }
 });
 window.addEventListener('pointercancel', e => pointers.delete(e.pointerId));
 
-// --- TIENDA Y MISIONES ---
+// --- TIENDA ---
 function openShop() { 
     document.getElementById('shop-ui').classList.remove('hidden');
     document.getElementById('expansion-cost-text').innerText = expansionCost;
@@ -276,12 +305,13 @@ function enterBuildMode() {
 }
 
 function exitBuildMode() {
-    isBuildMode = false; cancelPlacement();
+    isBuildMode = false; cancelPlacement(); cancelEdit();
     document.getElementById('build-ui').classList.add('hidden');
     document.getElementById('normal-ui').classList.remove('hidden');
 }
 
 function selectBuilding(type) {
+    if(selectedBuildingId) cancelEdit();
     pendingBuildingType = type;
     pendingBuildingData = entityData[type];
     pGridX = Math.floor(camera.x / TILE_SIZE);
@@ -291,21 +321,108 @@ function selectBuilding(type) {
 }
 
 function cancelPlacement() {
+    // Si estábamos reubicando, lo devolvemos a su lugar original
+    if (isRelocating && relocatingBuilding) {
+        buildings.push(relocatingBuilding); 
+        isRelocating = false; relocatingBuilding = null;
+    }
+    
     pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
     document.getElementById('placement-controls').classList.add('hidden');
-    document.getElementById('build-tray').classList.remove('hidden');
+    
+    if (selectedBuildingId) {
+        document.getElementById('edit-controls').classList.remove('hidden');
+    } else {
+        document.getElementById('build-tray').classList.remove('hidden');
+    }
 }
 
 function confirmPlacement() {
     if (!pendingBuildingData) return;
     if (buildings.some(b => b.gridX === pGridX && b.gridY === pGridY)) return showNotification("Casilla ocupada");
-    if (resources.wood < pendingBuildingData.wood || resources.stone < pendingBuildingData.stone) return showNotification("Recursos insuficientes");
+    
+    // Flujo de Reubicar
+    if (isRelocating) {
+        let dmg = Math.floor(relocatingBuilding.maxHp * 0.05);
+        relocatingBuilding.hp = Math.max(1, relocatingBuilding.hp - dmg); // Restar 5% pero no dejar que muera
+        relocatingBuilding.gridX = pGridX;
+        relocatingBuilding.gridY = pGridY;
+        
+        buildings.push(relocatingBuilding);
+        isRelocating = false; relocatingBuilding = null;
+        
+        showNotification("Estructura reubicada (-5% HP)");
+        pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
+        document.getElementById('placement-controls').classList.add('hidden');
+        cancelEdit(); 
+        saveGame();
+        return;
+    }
 
+    // Flujo Normal
+    if (resources.wood < pendingBuildingData.wood || resources.stone < pendingBuildingData.stone) return showNotification("Recursos insuficientes");
     resources.wood -= pendingBuildingData.wood; resources.stone -= pendingBuildingData.stone;
     buildings.push({ id: Date.now(), gridX: pGridX, gridY: pGridY, type: pendingBuildingType, ...pendingBuildingData, hp: pendingBuildingData.maxHp });
     
     updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!");
     cancelPlacement(); 
+}
+
+// --- NUEVO: LÓGICA DE EDICIÓN (SELECCIÓN, DESTRUIR, REUBICAR) ---
+function selectExistingBuilding(id) {
+    selectedBuildingId = id;
+    document.getElementById('build-tray').classList.add('hidden');
+    document.getElementById('placement-controls').classList.add('hidden');
+    document.getElementById('destroy-controls').classList.add('hidden');
+    document.getElementById('edit-controls').classList.remove('hidden');
+}
+
+function cancelEdit() {
+    selectedBuildingId = null;
+    document.getElementById('edit-controls').classList.add('hidden');
+    document.getElementById('destroy-controls').classList.add('hidden');
+    document.getElementById('build-tray').classList.remove('hidden');
+}
+
+function initDestroy() {
+    // Al pedir destruir, ocultamos opciones y mostramos Confirmar/Cancelar
+    document.getElementById('edit-controls').classList.add('hidden');
+    document.getElementById('destroy-controls').classList.remove('hidden');
+}
+
+function confirmDestroy() {
+    let b = buildings.find(x => x.id === selectedBuildingId);
+    if (b) {
+        let data = entityData[b.type];
+        let refundWood = Math.floor((data.wood || 0) * 0.4);
+        let refundStone = Math.floor((data.stone || 0) * 0.4);
+        
+        resources.wood += refundWood;
+        resources.stone += refundStone;
+        buildings = buildings.filter(x => x.id !== selectedBuildingId);
+        
+        updateCapacity(); updateUI(); saveGame();
+        showNotification(`Destruido: +${refundWood}🪵 +${refundStone}🪨 devueltos`);
+    }
+    cancelEdit();
+}
+
+function startRelocate() {
+    let b = buildings.find(x => x.id === selectedBuildingId);
+    if (!b) return;
+    
+    isRelocating = true;
+    relocatingBuilding = b;
+    pendingBuildingType = b.type;
+    pendingBuildingData = entityData[b.type];
+    pGridX = b.gridX; 
+    pGridY = b.gridY;
+    
+    // Lo sacamos temporalmente para evitar que colisione consigo mismo al arrastrarlo
+    buildings = buildings.filter(x => x.id !== selectedBuildingId);
+    
+    document.getElementById('edit-controls').classList.add('hidden');
+    document.getElementById('placement-controls').classList.remove('hidden');
 }
 
 // --- UTILIDADES ---
