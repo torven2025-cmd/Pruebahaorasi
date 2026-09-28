@@ -10,7 +10,7 @@ body { background-color: #111; overflow: hidden; }
 canvas { display: block; width: 100%; height: 100%; touch-action: none; }
 
 #ui-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; }
-button, .shop-card, #shop-ui { pointer-events: auto; }
+button, .shop-card, #shop-ui, #upgrade-modal, #train-modal { pointer-events: auto; }
 #main-hud { width: 100%; height: 100%; position: absolute; }
 #top-left-controls { position: absolute; top: 15px; left: 15px; display: flex; flex-direction: column; gap: 10px; }
 .icon-btn { width: 45px; height: 45px; border-radius: 10px; background: rgba(0,0,0,0.6); color: white; font-size: 1.2rem; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.5);}
@@ -28,9 +28,10 @@ button, .shop-card, #shop-ui { pointer-events: auto; }
 .corner-btn { position: absolute; bottom: 20px; padding: 8px 25px; border-radius: 12px; font-weight: 900; font-size: 1.2rem; color: white; border: 3px solid #222; box-shadow: 0 6px 10px rgba(0,0,0,0.6); cursor: pointer; pointer-events: auto; text-shadow: 1px 1px 2px black; display: flex; flex-direction: column; align-items: center; justify-content: center; }
 .corner-btn:active { transform: translateY(4px); box-shadow: 0 2px #111; }
 .corner-btn .btn-icon { font-size: 2rem; margin-bottom: -5px; }
-
+#btn-attack-hud { left: 20px; background: linear-gradient(to bottom, #e67e22, #d35400); border-color: #873600; }
 #btn-shop-hud { right: 20px; background: linear-gradient(to bottom, #f1c40f, #f39c12); color: black; text-shadow: none; border-color: #9c640c;}
 
+/* TIENDA */
 #shop-ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: flex; justify-content: center; align-items: center; z-index: 20; }
 .shop-panel { position: relative; background: #e6e6e6; border-radius: 10px; border: 4px solid #555; width: 95%; max-width: 800px; height: 85vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); margin-top: 30px;}
 .shop-top-icon { position: absolute; top: -45px; left: 50%; transform: translateX(-50%); z-index: 25; }
@@ -52,7 +53,6 @@ button, .shop-card, #shop-ui { pointer-events: auto; }
 
 #placement-controls, #edit-controls, #destroy-controls, #ruin-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 95%; max-width: 500px; pointer-events: auto; }
 #placement-controls button, #edit-controls button, #destroy-controls button, #ruin-controls button { flex: 1 1 30%; padding: 12px 5px; font-size: 0.9rem; font-weight: bold; border-radius: 8px; color: white; border: none; box-shadow: 0 5px rgba(0,0,0,0.5); cursor: pointer; text-shadow: 1px 1px 2px black; }
-
 #btn-upgrade { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); flex-basis: 100% !important; margin-bottom: 5px;}
 #btn-train-troop { background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%); flex-basis: 100% !important; margin-bottom: 5px;}
 #btn-repair { background: linear-gradient(180deg, #f1c40f 0%, #f39c12 100%); color: black !important; text-shadow: none !important;}
@@ -60,6 +60,40 @@ button, .shop-card, #shop-ui { pointer-events: auto; }
 #btn-relocate { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); }
 #btn-destroy-init, #btn-destroy-ruin, #btn-confirm-destroy { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); }
 #btn-cancel, #btn-cancel-edit, #btn-cancel-destroy, #btn-cancel-ruin { background: linear-gradient(180deg, #95a5a6 0%, #7f8c8d 100%); }
+
+/* === NUEVO: MODAL DE MEJORA === */
+#upgrade-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 30; }
+.upgrade-panel { position: relative; background: #ecf0f1; border-radius: 12px; border: 4px solid #34495e; width: 90%; max-width: 500px; padding: 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.9); }
+#upgrade-title { color: #2c3e50; font-size: 1.4rem; margin-bottom: 20px; text-transform: uppercase; border-bottom: 2px solid #bdc3c7; padding-bottom: 10px;}
+.upgrade-stats-container { display: flex; justify-content: space-around; background: #bdc3c7; border-radius: 8px; padding: 15px; margin-bottom: 20px; border: 2px solid #95a5a6; }
+.stat-box { display: flex; align-items: center; gap: 10px; }
+.stat-icon { font-size: 2rem; }
+.stat-details p { font-size: 0.8rem; font-weight: bold; color: #34495e; margin: 0; text-align: left; }
+.stat-details b { font-size: 1.1rem; color: #111; }
+.stat-details b span { color: #27ae60; font-weight: 900; } /* Lo que se suma */
+#upgrade-reqs-section h3 { font-size: 0.9rem; color: #c0392b; margin-bottom: 10px; }
+.req-grid { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+.req-item { background: #34495e; color: white; padding: 5px 10px; border-radius: 6px; font-size: 0.8rem; font-weight: bold; }
+.req-item.met { background: #27ae60; }
+.upgrade-confirm-btn { background: linear-gradient(to bottom, #2ecc71, #27ae60); border: 2px solid #2ecc71; color: white; width: 100%; padding: 12px; border-radius: 8px; font-size: 1.2rem; font-weight: 900; cursor: pointer; text-shadow: 1px 1px 2px black; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 5px 0 #1e8449;}
+.upgrade-confirm-btn:active { transform: translateY(5px); box-shadow: none; }
+.upgrade-confirm-btn:disabled { background: #7f8c8d; border-color: #555; color: #bbb; box-shadow: none; cursor: not-allowed; }
+
+/* === NUEVO: MODAL MI EJÉRCITO === */
+#train-modal { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); display: flex; justify-content: center; align-items: center; z-index: 30; }
+.train-panel { position: relative; background: #e6e6e6; border-radius: 10px; border: 4px solid #555; width: 95%; max-width: 800px; height: 85vh; display: flex; flex-direction: column; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+.train-title { background: #333; color: white; padding: 15px; margin: 0; text-align: center; border-radius: 5px 5px 0 0; text-transform: uppercase; letter-spacing: 1px;}
+.train-content { flex-grow: 1; padding: 20px; overflow-y: auto; background: #7f8c8d;}
+.troop-section { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 15px; }
+.troop-card { background: #bdc3c7; border: 3px solid #2c3e50; border-radius: 8px; padding: 10px; text-align: center; font-weight: bold; position: relative; cursor: pointer; }
+.troop-card img { width: 50px; height: 50px; margin-bottom: 5px; }
+.troop-card.locked { background: #95a5a6; opacity: 0.7; cursor: not-allowed; border-style: dashed; }
+.troop-card.locked .lock-icon { font-size: 2rem; display: block; margin-bottom: 5px;}
+.troop-card.available { background: linear-gradient(to bottom, #f1c40f, #e67e22); color: black; box-shadow: 0 4px #d35400; }
+.troop-card.available:active { transform: translateY(4px); box-shadow: none; }
+.train-footer { background: #333; padding: 15px; display: flex; justify-content: flex-end; border-radius: 0 0 5px 5px;}
+.attack-mock-btn { background: #e74c3c; color: white; border: 2px solid #c0392b; padding: 10px 30px; font-size: 1.2rem; font-weight: bold; border-radius: 8px; cursor: pointer; box-shadow: 0 4px #922b21;}
+.attack-mock-btn:active { transform: translateY(4px); box-shadow: none; }
 
 .hidden { display: none !important; }
 #notification-area { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%); color: #fff; font-weight: bold; font-size: 1.2rem; text-shadow: 2px 2px 4px #000; pointer-events: none; width: 100%; text-align: center; z-index: 100;}
