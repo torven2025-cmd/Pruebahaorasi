@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - HUD Clash Of Clans</title>
+    <title>Castle Battle - Temporizadores</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,7 +19,7 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="ui-layer">
-            
+            <!-- HUD PRINCIPAL -->
             <div id="main-hud">
                 <div id="top-left-controls">
                     <button class="icon-btn" onclick="toggleFullScreen()" id="btn-fs" title="Pantalla Completa">🔲</button>
@@ -53,11 +53,13 @@
                 </button>
             </div>
 
+            <!-- CONTROLES DE COLOCACIÓN -->
             <div id="placement-controls" class="hidden">
                 <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
                 <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
             </div>
 
+            <!-- CONTROLES DE EDICIÓN -->
             <div id="edit-controls" class="hidden">
                 <button id="btn-train-troop" onclick="trainTroop()" style="display:none;">🗡️ Entrenar Bárbaro (25🪵)</button>
                 <button id="btn-repair" onclick="repairBuilding()">🔨 Reparar</button>
@@ -77,23 +79,23 @@
                 <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
             </div>
 
+            <!-- UI DE COMBATE (Con Temporizadores) -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
-                    <p>Despliega tropas fuera de la zona blanca transparente.</p>
+                    <p id="combat-status-text">El ataque comienza en:</p>
+                    <div id="combat-timer">00:10</div>
                     <button onclick="surrender()">Rendirse y Retirarse</button>
                 </div>
             </div>
 
+            <!-- MODAL DE LA TIENDA -->
             <div id="shop-ui" class="hidden">
                 <div class="shop-panel">
-                    
                     <div class="shop-top-icon">
                         <div class="hammer-saw-icon">🔨🪚</div>
                     </div>
-                    
                     <button class="close-btn" onclick="closeShop()">X</button>
-                    
                     <h2 class="shop-title">Estructuras y trampas</h2>
                     
                     <div class="shop-tabs">
@@ -104,21 +106,14 @@
                     </div>
 
                     <div class="shop-content-area">
-                        <!-- EJÉRCITO -->
                         <div id="tab-ejercito" class="shop-grid">
                             <button class="shop-card" onclick="selectBuilding('camp')">
-                                <h3>Campamento</h3>
-                                <p class="desc">Tus tropas se reúnen en los campamentos, así que construye más y mejóralos para levantar un poderoso ejército.</p>
-                                <div class="price">200🪵 150🪨</div>
+                                <h3>Campamento</h3><p class="desc">Tus tropas se reúnen aquí.</p><div class="price">200🪵 150🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('barracks')">
-                                <h3>Cuartel</h3>
-                                <p class="desc">El cuartel es para entrenar tropas.</p>
-                                <div class="price">300🪵 200🪨</div>
+                                <h3>Cuartel</h3><p class="desc">Para entrenar tropas.</p><div class="price">300🪵 200🪨</div>
                             </button>
                         </div>
-
-                        <!-- RECURSOS -->
                         <div id="tab-recursos" class="shop-grid hidden">
                             <button class="shop-card" onclick="selectBuilding('builder_hut')">
                                 <h3>Choza constructor</h3><p class="desc">Básico para aldea</p><div class="price">100🪵</div>
@@ -145,27 +140,17 @@
                                 <h3>Almacén Monedas</h3><p class="desc">Guarda monedas</p><div class="price">400🪵 400🪨</div>
                             </button>
                         </div>
-
-                        <!-- DEFENSAS -->
                         <div id="tab-defensas" class="shop-grid hidden">
                             <button class="shop-card" onclick="selectBuilding('cannon')">
-                                <h3>Cañón</h3>
-                                <p class="desc">Defensa ideal para cualquier zona terrestre.</p>
-                                <div class="price">200🪵 200🪨</div>
+                                <h3>Cañón</h3><p class="desc">Defensa terrestre.</p><div class="price">200🪵 200🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('tower')">
-                                <h3>Torre arqueras</h3>
-                                <p class="desc">Dispara a distancia protegiendo la base.</p>
-                                <div class="price">250🪵 250🪨</div>
+                                <h3>Torre arqueras</h3><p class="desc">Dispara a distancia.</p><div class="price">250🪵 250🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('wall')">
-                                <h3>Muro</h3>
-                                <p class="desc">Protege tu aldea frenando enemigos.</p>
-                                <div class="price">40🪵 20🪨</div>
+                                <h3>Muro</h3><p class="desc">Protege tu aldea.</p><div class="price">40🪵 20🪨</div>
                             </button>
                         </div>
-
-                        <!-- TRAMPAS -->
                         <div id="tab-trampas" class="shop-grid hidden">
                             <p style="text-align:center; width:100%; color:#222; padding: 20px; font-weight: bold;">Próximamente...</p>
                         </div>
