@@ -10,9 +10,22 @@ const TILE_SIZE = 25;
 let gridSize = 40; 
 let expansionCost = 100;
 
-// SIN LOCALSTORAGE - Inicia siempre fresco para testear sin bugs en incógnito
-let resources = { wood: 500, stone: 500, points: 0, troops: 0, coins: 0 };
+// SIN GUARDADO LOCAL (Evita bugs en Modo Incógnito)
+let resources = { wood: 500, stone: 500, points: 0, troops: 5, coins: 0 };
 let buildings = [];
+let maxTroops = 0; let maxCoins = 100;
+
+let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
+let isBuildMode = false; let inCombat = false; let frameCount = 0; 
+let mySavedBase = []; let deployedTroops = []; let lasers = [];
+
+// ESTADOS DEL COMBATE
+let combatPhase = 'none'; // 'none', 'prep', 'battle', 'end'
+let combatSeconds = 0;
+let combatTimerInterval = null;
+
+let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
+let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
 
 const entityData = {
     castle: { wood: 1000, stone: 1000, color: '#4a4a4a', emoji: '🏰', maxHp: 1000, w: 4, h: 4 },
@@ -31,17 +44,11 @@ const entityData = {
     wall: { wood: 40, stone: 20, color: '#555', emoji: '🧱', maxHp: 400, w: 1, h: 1 }
 };
 
-let maxTroops = 0; let maxCoins = 100;
-let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
-let isBuildMode = false; let inCombat = false; let combatOver = false; let frameCount = 0; 
-let mySavedBase = []; let deployedTroops = []; let lasers = [];
-
-let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
-let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
-
-// Castillo inicial
+// Crear base inicial si está vacía
 if (buildings.length === 0) {
     buildings.push({ id: Date.now(), gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp });
+    buildings.push({ id: Date.now()+1, gridX: 14, gridY: 18, type: 'camp', ...entityData.camp, hp: entityData.camp.maxHp });
+    updateCapacity();
 }
 
 // Economía Pasiva Online
@@ -57,26 +64,26 @@ setInterval(() => {
             if (b.type === 'lumbermill') woodGen += 2;
             if (b.type === 'mine') stoneGen += 2;
             if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
-            b.hp = Math.max(0, b.hp - (b.maxHp / 86400)); // Deterioro pasivo
+            b.hp = Math.max(0, b.hp - (b.maxHp / 86400)); // Deterioro pasivo de 24h
         }
     });
 
     if (goldGenTimer >= 3) goldGenTimer = 0;
-    let uiNeedsUpdate = false;
     
-    if (woodGen > 0 || stoneGen > 0) { resources.wood += woodGen; resources.stone += stoneGen; uiNeedsUpdate = true; }
-    if (goldGen > 0 && resources.coins < maxCoins) { resources.coins = Math.min(resources.coins + goldGen, maxCoins); uiNeedsUpdate = true; }
-    if (uiNeedsUpdate) updateUI();
+    if (woodGen > 0 || stoneGen > 0) { resources.wood += woodGen; resources.stone += stoneGen; }
+    if (goldGen > 0 && resources.coins < maxCoins) { resources.coins = Math.min(resources.coins + goldGen, maxCoins); }
+    updateUI();
 }, 1000);
 
-// LÓGICA DE ACTUALIZACIÓN COMBATE
+// BUCLE DE COMBATE EN TIEMPO REAL
 function update() {
     frameCount++;
-    if (inCombat && !combatOver) {
+    if (inCombat && combatPhase === 'battle') {
         buildings = buildings.filter(b => b.hp > 0);
         
-        if (buildings.length === 0 && deployedTroops.length > 0) { resolveCombat('win'); return; }
-        if (deployedTroops.length === 0 && resources.troops <= 0 && buildings.length > 0) { resolveCombat('lose'); return; }
+        let castleAlive = buildings.some(b => b.type === 'castle');
+        if (!castleAlive) { resolveCombat('win'); return; }
+        if (deployedTroops.length === 0 && resources.troops <= 0) { resolveCombat('lose'); return; }
 
         deployedTroops.forEach(troop => {
             if (!troop.target || troop.target.hp <= 0) troop.target = getNearestBuilding(troop.x, troop.y);
@@ -119,7 +126,7 @@ function getNearestBuilding(x, y) {
     return nearest;
 }
 
-// ZONA TRANSPARENTE DE DESPLIEGUE (1 Cuadrito alrededor)
+// ZONA TRANSPARENTE EN COMBATE (Margen de 1 cuadro)
 function isRestrictedZone(gX, gY) {
     for (let b of buildings) {
         if (gX >= b.gridX - 1 && gX < b.gridX + b.w + 1 &&
@@ -158,7 +165,7 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // ZONA TRANSPARENTE EN COMBATE
+    // ZONA TRANSPARENTE DE COMBATE
     if (inCombat) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         for (let x = 0; x < gridSize; x++) {
@@ -221,11 +228,14 @@ function draw() {
         ctx.strokeRect(px, py, bw, bh); ctx.setLineDash([]);
     }
 
+    // TROPAS MEJORADAS VISUALMENTE
     deployedTroops.forEach(t => {
         ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 6, t.y - 12, 12 * (t.hp/100), 3);
+        ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = 'white'; ctx.font = `12px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🗡️', t.x, t.y);
+        ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 8, t.y - 15, 16 * (t.hp/100), 4);
     });
+
     lasers.forEach(l => {
         ctx.strokeStyle = '#f39c12'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); ctx.stroke();
     });
@@ -235,7 +245,7 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR MULTI-TÁCTIL (ZOOM POR PELLIZCO ESTABLE) ---
+// --- MOTOR MULTI-TÁCTIL (ZOOM POR PELLIZCO Y PANEO) ---
 let pointers = new Map(); let initialCam = { x: 0, y: 0 }; let startDragPan = { x: 0, y: 0 }; 
 let hasMoved = false; let isCanvasTouch = false; 
 let initialPinchDist = null; let initialZoom = 1;
@@ -298,16 +308,11 @@ window.addEventListener('pointerup', e => {
         let worldX = ((e.clientX - canvas.width/2) / camera.zoom) + camera.x; let worldY = ((e.clientY - canvas.height/2) / camera.zoom) + camera.y;
         let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
 
-        if (inCombat && !combatOver) {
-            // Validación corregida: Ahora detecta bien el click en zona blanca
-            if (isRestrictedZone(gX, gY)) {
-                showNotification("Área restringida. Despliega en la zona verde.");
-            } else {
-                deployTroop(worldX, worldY);
-            }
+        if (inCombat && combatPhase !== 'end') {
+            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega en zona verde.");
+            else deployTroop(worldX, worldY);
         } else if (!pendingBuildingData) {
             let clickedBuilding = buildings.find(b => gX >= b.gridX && gX < b.gridX + b.w && gY >= b.gridY && gY < b.gridY + b.h);
-            
             if (!clickedBuilding && !selectedBuildingId && isBuildMode) { exitBuildMode(); }
             else if (clickedBuilding) { enterBuildMode(); selectExistingBuilding(clickedBuilding.id); } 
             else if (selectedBuildingId) { cancelEdit(); }
@@ -317,14 +322,133 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
+
+// --- SISTEMA DE COMBATE CON TEMPORIZADORES ---
+function startCombatMatch() {
+    if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en un Cuartel!");
+    
+    // Guardar una copia profunda para poder restaurarla al rendirse/perder
+    mySavedBase = JSON.parse(JSON.stringify(buildings)); 
+    
+    // Crear base enemiga de prueba
+    buildings = [
+        { id: 1, gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp },
+        { id: 4, gridX: 18, gridY: 14, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
+        { id: 5, gridX: 23, gridY: 18, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
+    ];
+    
+    inCombat = true; combatOver = false; deployedTroops = []; lasers = [];
+    document.getElementById('main-hud').classList.add('hidden'); 
+    document.getElementById('combat-ui').classList.remove('hidden');
+    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
+
+    // Iniciar Temporizador de Preparación (10s)
+    combatPhase = 'prep';
+    combatSeconds = 10;
+    document.getElementById('combat-status-text').innerText = "El ataque comienza en:";
+    updateCombatTimerUI();
+    if(combatTimerInterval) clearInterval(combatTimerInterval);
+    combatTimerInterval = setInterval(combatTick, 1000);
+}
+
+function combatTick() {
+    if(combatPhase === 'end') return;
+    combatSeconds--;
+    
+    if(combatPhase === 'prep') {
+        if(combatSeconds <= 0) {
+            autoDeployTroops();
+            startBattlePhase();
+        }
+    } else if (combatPhase === 'battle') {
+        if(combatSeconds <= 0) {
+            let castle = buildings.find(b => b.type === 'castle');
+            if(castle && castle.hp > 0) resolveCombat('lose_time');
+            else resolveCombat('win');
+        }
+    }
+    updateCombatTimerUI();
+}
+
+function startBattlePhase() {
+    combatPhase = 'battle';
+    combatSeconds = 180; // 3 Minutos
+    document.getElementById('combat-status-text').innerText = "Tiempo restante:";
+    updateCombatTimerUI();
+}
+
+function updateCombatTimerUI() {
+    let m = Math.floor(combatSeconds / 60);
+    let s = combatSeconds % 60;
+    document.getElementById('combat-timer').innerText = m + ":" + (s < 10 ? "0" + s : s);
+}
+
+function autoDeployTroops() {
+    let boundary = gridSize * TILE_SIZE;
+    while(resources.troops > 0) {
+        resources.troops--;
+        let x = 0, y = 0;
+        if(Math.random() > 0.5) {
+            x = Math.random() > 0.5 ? 25 : boundary - 25;
+            y = Math.random() * boundary;
+        } else {
+            x = Math.random() * boundary;
+            y = Math.random() > 0.5 ? 25 : boundary - 25;
+        }
+        deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
+    }
+    updateUI();
+}
+
+function deployTroop(x, y) {
+    if (resources.troops <= 0) return;
+    if (combatPhase === 'prep') startBattlePhase(); // Si colocas antes de 10s, empieza el ataque
+    
+    resources.troops--; updateUI();
+    deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
+}
+
+function resolveCombat(type) {
+    if (combatPhase === 'end') return;
+    combatPhase = 'end';
+    if(combatTimerInterval) clearInterval(combatTimerInterval);
+    
+    // Las tropas que sobrevivieron en el mapa + las que no usaste
+    let surviving = deployedTroops.length + resources.troops; 
+    resources.troops = Math.min(maxTroops, surviving);
+    
+    if (type === 'win') {
+        let lootedCoins = 50; resources.wood += 250; resources.stone += 250; resources.points += 20; 
+        resources.coins = Math.min(resources.coins + lootedCoins, maxCoins);
+        showNotification(`¡VICTORIA! 250🪵 250🪨 ${lootedCoins}🪙\nRegresan: ${surviving} 🗡️`); 
+    } else if (type === 'lose' || type === 'lose_time') { 
+        showNotification(`DERROTA... El Castillo sobrevivió.\nRegresan: ${surviving} 🗡️`);
+    } else if (type === 'surrender') { 
+        showNotification(`TE RENDISTE.\nRegresan: ${surviving} 🗡️`); 
+    }
+    updateUI(); setTimeout(endCombat, 3000);
+}
+
+function surrender() { resolveCombat('surrender'); }
+
+function endCombat() {
+    inCombat = false; combatOver = false; combatPhase = 'none'; deployedTroops = []; lasers = []; 
+    
+    // RESTAURAR BASE PROFUNDAMENTE Y CENTRAR CÁMARA
+    buildings = JSON.parse(JSON.stringify(mySavedBase)); 
+    updateCapacity(); 
+    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.2;
+
+    document.getElementById('combat-ui').classList.add('hidden'); 
+    document.getElementById('main-hud').classList.remove('hidden');
+    updateUI();
+}
+
+
 // --- GESTIÓN DE TIENDA Y CONSTRUCCIÓN ---
 function openShop() { 
-    isBuildMode = true;
-    document.getElementById('main-hud').classList.add('hidden'); 
-    document.getElementById('shop-ui').classList.remove('hidden'); 
-    document.getElementById('shop-wood').innerText = Math.floor(resources.wood);
-    document.getElementById('shop-stone').innerText = Math.floor(resources.stone);
-    document.getElementById('shop-coins').innerText = Math.floor(resources.coins);
+    isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); 
+    document.getElementById('shop-wood').innerText = Math.floor(resources.wood); document.getElementById('shop-stone').innerText = Math.floor(resources.stone); document.getElementById('shop-coins').innerText = Math.floor(resources.coins);
 }
 function closeShop() { isBuildMode = false; document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
 
@@ -339,8 +463,8 @@ function selectBuilding(type) {
     if(selectedBuildingId) cancelEdit();
     pendingBuildingType = type; pendingBuildingData = entityData[type];
     pGridX = Math.floor(camera.x / TILE_SIZE); pGridY = Math.floor(camera.y / TILE_SIZE);
-    document.getElementById('shop-ui').classList.add('hidden'); 
-    document.getElementById('placement-controls').classList.remove('hidden');
+    document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('placement-controls').classList.remove('hidden');
+    isBuildMode = true;
 }
 
 function enterBuildMode() { isBuildMode = true; } 
@@ -350,9 +474,7 @@ function cancelPlacement() {
     if (isRelocating && relocatingBuilding) { buildings.push(relocatingBuilding); isRelocating = false; relocatingBuilding = null; }
     pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
     document.getElementById('placement-controls').classList.add('hidden');
-    selectedBuildingId = null; 
-    document.getElementById('main-hud').classList.remove('hidden');
-    isBuildMode = false;
+    selectedBuildingId = null; document.getElementById('main-hud').classList.remove('hidden'); isBuildMode = false;
 }
 
 function confirmPlacement() {
@@ -449,6 +571,7 @@ function startRelocate() {
     isRelocating = true; relocatingBuilding = b; pendingBuildingType = b.type; pendingBuildingData = entityData[b.type];
     pGridX = b.gridX; pGridY = b.gridY; buildings = buildings.filter(x => x.id !== selectedBuildingId);
     document.getElementById('edit-controls').classList.add('hidden'); document.getElementById('placement-controls').classList.remove('hidden');
+    isBuildMode = true;
 }
 
 function updateCapacity() { 
@@ -461,48 +584,6 @@ function trainTroop() {
     if (resources.troops >= maxTroops) return showNotification(`Campamentos llenos (${maxTroops} max). Construye más campamentos.`);
     if (resources.wood >= 25) { resources.wood -= 25; resources.troops++; updateUI(); showNotification("¡Bárbaro entrenado!"); cancelEdit();
     } else showNotification("Falta madera");
-}
-
-// --- SISTEMA DE COMBATE ---
-function startCombatMatch() {
-    if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en un Cuartel!");
-    mySavedBase = JSON.parse(JSON.stringify(buildings)); 
-    buildings = [
-        { id: 1, gridX: 18, gridY: 18, type: 'castle', ...entityData.castle, hp: entityData.castle.maxHp },
-        { id: 4, gridX: 18, gridY: 14, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
-        { id: 5, gridX: 23, gridY: 18, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
-    ];
-    inCombat = true; combatOver = false; deployedTroops = []; lasers = [];
-    document.getElementById('main-hud').classList.add('hidden'); document.getElementById('combat-ui').classList.remove('hidden');
-    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
-}
-
-function deployTroop(x, y) {
-    if (!inCombat || combatOver) return;
-    if (resources.troops <= 0) return showNotification("¡No te quedan tropas!");
-    resources.troops--; updateUI();
-    deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 8, target: null });
-}
-
-function resolveCombat(type) {
-    if (combatOver) return; combatOver = true;
-    let surviving = deployedTroops.length; 
-    resources.troops = Math.min(maxTroops, resources.troops + surviving);
-    
-    if (type === 'win') {
-        let lootedCoins = 50; resources.wood += 250; resources.stone += 250; resources.points += 20; 
-        resources.coins = Math.min(resources.coins + lootedCoins, maxCoins);
-        showNotification(`¡VICTORIA! 250🪵 250🪨 ${lootedCoins}🪙\nSobreviven: ${surviving} 🗡️`); 
-    } else if (type === 'lose') { showNotification(`DERROTA...\nSobreviven: ${surviving} 🗡️`);
-    } else if (type === 'surrender') { showNotification(`TE RENDISTE.\nRegresan: ${surviving} 🗡️`); }
-    updateUI(); setTimeout(endCombat, 2500);
-}
-
-function surrender() { resolveCombat('surrender'); }
-function endCombat() {
-    inCombat = false; combatOver = false; deployedTroops = []; lasers = []; buildings = mySavedBase; updateCapacity(); 
-    document.getElementById('combat-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden');
-    updateUI();
 }
 
 function updateUI() {
@@ -529,3 +610,4 @@ function toggleFullScreen() {
 }
 
 updateCapacity(); updateUI();
+setTimeout(() => { if(!inCombat && buildings.length > 0) showNotification("💡 Toca la Tienda para añadir estructuras."); }, 2000);
