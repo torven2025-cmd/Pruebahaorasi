@@ -148,7 +148,7 @@ function draw() {
     ctx.strokeStyle = inCombat ? '#ff4500' : '#d4af37';
     ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // DIBUJAR ESTRUCTURAS
+    // Dibujar Estructuras Existentes
     buildings.forEach(b => {
         let px = b.gridX * TILE_SIZE, py = b.gridY * TILE_SIZE;
         
@@ -165,26 +165,23 @@ function draw() {
             return; 
         }
 
-        // ESTADO NORMAL
+        // ESTADO NORMAL Y BORDES DE DETERIORO
         ctx.fillStyle = b.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         
-        // SISTEMA DE VIDA EN EL BORDE (Sin barra flotante)
         let hpRatio = b.hp / b.maxHp;
         let perimeter = TILE_SIZE * 4;
 
         if (isBuildMode && selectedBuildingId === b.id) {
             ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
         } else {
-            // Fondo oscuro para el borde
             ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 3; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
             
-            // Borde verde o rojo según vida
-            if (hpRatio > 0) {
+            if (hpRatio > 0 && hpRatio < 1) {
                 ctx.strokeStyle = (hpRatio > 0.5) ? '#2ecc71' : '#e74c3c';
                 ctx.setLineDash([perimeter * hpRatio, perimeter]);
                 ctx.lineDashOffset = 0;
                 ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
-                ctx.setLineDash([]); // Reset vital
+                ctx.setLineDash([]); 
             }
         }
 
@@ -194,21 +191,29 @@ function draw() {
         }
     });
 
-    // SISTEMA VISUAL PARA COLOCAR NUEVOS EDIFICIOS (Caja semitransparente como pediste)
+    // CAJA DE CONSTRUCCIÓN SEMITRANSPARENTE
     if (pendingBuildingData && pGridX >= 0 && pGridY >= 0) {
         let px = pGridX * TILE_SIZE; let py = pGridY * TILE_SIZE;
         let isOccupied = buildings.some(b => b.gridX === pGridX && b.gridY === pGridY);
         
-        ctx.fillStyle = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(46, 204, 113, 0.5)';
+        ctx.globalAlpha = 0.6;
+        ctx.fillStyle = pendingBuildingData.color; 
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-        
-        ctx.globalAlpha = 0.8;
-        ctx.fillStyle = pendingBuildingData.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         if (pendingBuildingData.emoji) {
-            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`;
+            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(pendingBuildingData.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2);
         }
         ctx.globalAlpha = 1.0;
+
+        let perimeter = TILE_SIZE * 4;
+        let p = 1 - ((frameCount % 90) / 90); 
+        
+        ctx.strokeStyle = isOccupied ? '#e74c3c' : '#2ecc71';
+        ctx.lineWidth = 4;
+        ctx.setLineDash([perimeter * p, perimeter]);
+        ctx.lineDashOffset = 0;
+        ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.setLineDash([]);
     }
 
     deployedTroops.forEach(t => {
@@ -299,6 +304,7 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
+// --- FUNCIONALIDADES GENERALES ---
 function openShop() { document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('expansion-cost-text').innerText = expansionCost; }
 function closeShop() { document.getElementById('shop-ui').classList.add('hidden'); }
 
@@ -528,5 +534,29 @@ function updateUI() {
 }
 function changeZoom(amount) { camera.zoom = Math.max(0.4, Math.min(camera.zoom + amount, 2.5)); }
 function showNotification(msg) { uiLog.innerText = msg; setTimeout(() => uiLog.innerText = "", 2000); }
+
+// --- NUEVO: SISTEMA DE PANTALLA COMPLETA ---
+function toggleFullScreen() {
+    let doc = window.document;
+    let docEl = doc.documentElement;
+
+    let requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+    let cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
+
+    if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
+        requestFullScreen.call(docEl).then(() => {
+            if (screen.orientation && screen.orientation.lock) {
+                screen.orientation.lock('landscape').catch(function(error) {
+                    console.log("El bloqueo de orientación no es compatible en este dispositivo.", error);
+                });
+            }
+            document.getElementById('btn-fs').innerText = "🗗";
+        }).catch(err => { showNotification(`Error: ${err.message}`); });
+    } else {
+        cancelFullScreen.call(doc);
+        if (screen.orientation && screen.orientation.unlock) { screen.orientation.unlock(); }
+        document.getElementById('btn-fs').innerText = "🔲";
+    }
+}
 
 updateCapacity(); updateUI();
