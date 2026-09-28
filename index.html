@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Estable</title>
+    <title>Castle Battle - Deterioro</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -27,7 +27,7 @@
                 </div>
                 <div id="action-menu">
                     <button class="action-btn build-mode-btn" onclick="enterBuildMode()">🔨 Construir</button>
-                    <button class="action-btn" onclick="trainTroop()">Bárbaro<br><small>10🪵</small></button>
+                    <button class="action-btn" onclick="trainTroop()">Bárbaro<br><small>25🪵</small></button>
                     <button class="action-btn attack-btn" onclick="startCombatMatch()">⚔️ Atacar Base</button>
                     <button class="action-btn" onclick="openShop()">🏪 Tienda</button>
                     <button class="action-btn" onclick="showNotification('📜 Misiones: ¡Próximamente!')">📜 Misiones</button>
@@ -39,26 +39,27 @@
                 <button id="btn-exit-build" onclick="exitBuildMode()">Salir del Modo</button>
                 
                 <div id="build-tray">
+                    <!-- PRECIOS INCREMENTADOS PARA HACERLO MÁS LENTO -->
                     <button class="build-item" onclick="selectBuilding('goldmine')">
-                        <span class="icon">⛏️🟡</span><br>Mina de Oro<br><small>50🪵 50🪨</small>
+                        <span class="icon">⛏️🟡</span><br>Mina de Oro<br><small>250🪵 250🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('vault')">
-                        <span class="icon">🏦</span><br>Almacén 🪙<br><small>100🪵 100🪨</small>
+                        <span class="icon">🏦</span><br>Almacén 🪙<br><small>400🪵 400🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('lumbermill')">
-                        <span class="icon">🪚</span><br>Aserradero<br><small>20🪵 10🪨</small>
+                        <span class="icon">🪚</span><br>Aserradero<br><small>150🪵 50🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('mine')">
-                        <span class="icon">⛏️</span><br>Mina Piedra<br><small>10🪵 20🪨</small>
+                        <span class="icon">⛏️</span><br>Mina Piedra<br><small>50🪵 150🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('camp')">
-                        <span class="icon">⛺</span><br>Campamento<br><small>50🪵 30🪨</small>
+                        <span class="icon">⛺</span><br>Campamento<br><small>200🪵 150🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('wall')">
-                        <span class="icon">🧱</span><br>Muro<br><small>10🪵 5🪨</small>
+                        <span class="icon">🧱</span><br>Muro<br><small>40🪵 20🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('tower')">
-                        <span class="icon">🗼</span><br>Torre<br><small>20🪵 15🪨</small>
+                        <span class="icon">🗼</span><br>Torre<br><small>150🪵 150🪨</small>
                     </button>
                 </div>
 
@@ -67,19 +68,28 @@
                     <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
                 </div>
 
+                <!-- CONTROLES DE EDICIÓN (Cuando la estructura está viva o dañada) -->
                 <div id="edit-controls" class="hidden">
+                    <button id="btn-repair" onclick="repairBuilding()">🔨 Reparar</button>
                     <button id="btn-relocate" onclick="startRelocate()">🔄 Reubicar</button>
                     <button id="btn-destroy-init" onclick="initDestroy()">💥 Destruir</button>
                     <button id="btn-cancel-edit" onclick="cancelEdit()">❌ Cancelar</button>
                 </div>
 
+                <!-- CONTROLES DE RUINA (Cuando la estructura llega a 0% de HP) -->
+                <div id="ruin-controls" class="hidden">
+                    <button id="btn-rebuild" onclick="rebuildBuilding()">🏗️ Reconstruir</button>
+                    <button id="btn-destroy-ruin" onclick="initDestroy()">💥 Limpiar Restos</button>
+                    <button id="btn-cancel-ruin" onclick="cancelEdit()">❌ Cancelar</button>
+                </div>
+
+                <!-- CONTROLES PARA CONFIRMAR DESTRUCCIÓN -->
                 <div id="destroy-controls" class="hidden">
                     <button id="btn-cancel-destroy" onclick="cancelEdit()">❌ Cancelar</button>
-                    <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar</button>
+                    <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (Devuelve 40%)</button>
                 </div>
             </div>
 
-            <!-- UI DE COMBATE -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
@@ -88,7 +98,6 @@
                 </div>
             </div>
 
-            <!-- UI DE LA TIENDA -->
             <div id="shop-ui" class="hidden">
                 <div class="shop-panel">
                     <h2>🏪 Tienda del Reino</h2>
