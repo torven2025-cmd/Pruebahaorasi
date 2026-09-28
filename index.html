@@ -29,7 +29,6 @@
                     <button class="action-btn build-mode-btn" onclick="enterBuildMode()">🔨 Construir</button>
                     <button class="action-btn" onclick="trainTroop()">Bárbaro<br><small>10🪵</small></button>
                     <button class="action-btn attack-btn" onclick="startCombatMatch()">⚔️ Atacar Base</button>
-                    <!-- Nuevos Botones agregados sin cambiar el estilo original -->
                     <button class="action-btn" onclick="openShop()">🏪 Tienda</button>
                     <button class="action-btn" onclick="showNotification('📜 Misiones: ¡Próximamente!')">📜 Misiones</button>
                 </div>
@@ -40,14 +39,12 @@
                 <button id="btn-exit-build" onclick="exitBuildMode()">Salir del Modo</button>
                 
                 <div id="build-tray">
-                    <!-- Nuevas Estructuras -->
                     <button class="build-item" onclick="selectBuilding('goldmine')">
                         <span class="icon">⛏️🟡</span><br>Mina de Oro<br><small>50🪵 50🪨</small>
                     </button>
                     <button class="build-item" onclick="selectBuilding('vault')">
                         <span class="icon">🏦</span><br>Almacén 🪙<br><small>100🪵 100🪨</small>
                     </button>
-                    <!-- Estructuras Originales -->
                     <button class="build-item" onclick="selectBuilding('lumbermill')">
                         <span class="icon">🪚</span><br>Aserradero<br><small>20🪵 10🪨</small>
                     </button>
@@ -65,9 +62,23 @@
                     </button>
                 </div>
 
+                <!-- Controles para crear/reubicar -->
                 <div id="placement-controls" class="hidden">
                     <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
                     <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
+                </div>
+
+                <!-- NUEVO: Controles de Edición al tocar una estructura -->
+                <div id="edit-controls" class="hidden">
+                    <button id="btn-relocate" onclick="startRelocate()">🔄 Reubicar</button>
+                    <button id="btn-destroy-init" onclick="initDestroy()">💥 Destruir</button>
+                    <button id="btn-cancel-edit" onclick="cancelEdit()">❌ Cancelar</button>
+                </div>
+
+                <!-- NUEVO: Controles de Confirmación de Destrucción -->
+                <div id="destroy-controls" class="hidden">
+                    <button id="btn-cancel-destroy" onclick="cancelEdit()">❌ Cancelar</button>
+                    <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar</button>
                 </div>
             </div>
 
