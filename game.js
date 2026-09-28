@@ -8,23 +8,20 @@ window.addEventListener('resize', resizeCanvas); resizeCanvas();
 const TILE_SIZE = 25; 
 let gridSize = 40; 
 
-// SIN GUARDADO LOCAL - ECONOMÍA: MONEDAS, ELIXIR, GEMAS
+// SIN GUARDADO LOCAL
 let resources = { gold: 1500, elixir: 1500, points: 0, troops: 5, gems: 0 };
 let buildings = [];
 
-// DATOS DE ENTIDADES (Adaptados a Oro y Elixir)
+// DATOS ESTRICTOS DE ENTIDADES
 const entityData = {
-    townhall: { color: '#4a4a4a', emoji: '🏛️', w: 4, h: 4 }, // Sus stats dependen del nivel
+    townhall: { color: '#4a4a4a', emoji: '🏛️', w: 4, h: 4 }, 
     camp: { gold: 200, elixir: 150, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5, w: 3, h: 3 },
     barracks: { gold: 300, elixir: 200, color: '#d35400', emoji: '⚔️', maxHp: 250, w: 3, h: 3 }, 
     builder_hut: { gold: 100, elixir: 0, color: '#f39c12', emoji: '🏠', maxHp: 100, w: 2, h: 2 },
-    lumbermill: { gold: 150, elixir: 50, color: '#27ae60', emoji: '🪚', maxHp: 150, w: 3, h: 3 },
-    elixir_pump: { gold: 50, elixir: 150, color: '#95a5a6', emoji: '⛏️', maxHp: 150, w: 3, h: 3 },
+    elixir_pump: { gold: 50, elixir: 150, color: '#95a5a6', emoji: '💧', maxHp: 150, w: 3, h: 3 },
     goldmine: { gold: 250, elixir: 250, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150, w: 3, h: 3 },
-    miner_hut: { gold: 150, elixir: 150, color: '#7f8c8d', emoji: '⛺⛏️', maxHp: 150, w: 2, h: 2 },
-    vault_wood: { gold: 200, elixir: 200, color: '#d35400', emoji: '📦', maxHp: 400, w: 3, h: 3 },
-    vault_stone: { gold: 200, elixir: 200, color: '#8e44ad', emoji: '📦', maxHp: 400, w: 3, h: 3 },
-    vault_coins: { gold: 400, elixir: 400, color: '#2ecc71', emoji: '🏦', maxHp: 400, w: 3, h: 3 }, 
+    vault_elixir: { gold: 200, elixir: 200, color: '#8e44ad', emoji: '🫙', maxHp: 400, w: 3, h: 3 },
+    vault_gold: { gold: 400, elixir: 400, color: '#2ecc71', emoji: '🏦', maxHp: 400, w: 3, h: 3 }, 
     cannon: { gold: 200, elixir: 200, color: '#7f8c8d', emoji: '💣', maxHp: 300, damage: 25, range: 180, w: 3, h: 3 },
     tower: { gold: 250, elixir: 250, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 15, range: 250, w: 3, h: 3 },
     wall: { gold: 40, elixir: 20, color: '#555', emoji: '🧱', maxHp: 400, w: 1, h: 1 }
@@ -35,13 +32,16 @@ let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 }
 let isBuildMode = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
 
-// ESTADOS COMBATE
-let inCombat = false; let combatPhase = 'none'; let combatSeconds = 0; let combatTimerInterval = null;
+// VARIABLES DEL COMBATE
+let inCombat = false; 
+let combatPhase = 'none'; 
+let combatSeconds = 0; 
+let combatTimerInterval = null;
 
 let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
 let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
 
-// CREACIÓN BASE INICIAL (Con Ayuntamiento Nivel 2)
+// CREACIÓN BASE INICIAL
 if (buildings.length === 0) {
     buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 2, ...entityData.townhall, maxHp: 800, hp: 800 });
     buildings.push({ id: 2, gridX: 14, gridY: 18, type: 'camp', ...entityData.camp, hp: entityData.camp.maxHp });
@@ -49,7 +49,7 @@ if (buildings.length === 0) {
     updateCapacity();
 }
 
-// GENERACIÓN DE RECURSOS (Sin Deterioro)
+// GENERACIÓN DE RECURSOS (Cero deterioro)
 let resourceTimer = 0;
 setInterval(() => {
     if (inCombat) return;
@@ -73,7 +73,11 @@ setInterval(() => {
     }
 }, 1000);
 
-// BUCLE DE COMBATE
+
+// ==========================================
+// MOTOR DE COMBATE COMPLETO Y RESTAURADO
+// ==========================================
+
 function update() {
     frameCount++;
     if (inCombat && combatPhase === 'battle') {
@@ -156,7 +160,6 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // ZONA TRANSPARENTE AL ATACAR
     if (inCombat) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         for (let x = 0; x < gridSize; x++) {
@@ -196,7 +199,6 @@ function draw() {
         if (b.emoji) {
             ctx.fillStyle = 'white'; ctx.font = `${Math.min(bw, bh) * 0.5}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(b.emoji, px + bw/2, py + bh/2);
-            // Nivel del Ayuntamiento
             if(b.type === 'townhall') {
                 ctx.fillStyle = 'yellow'; ctx.font = `14px Arial`; ctx.fillText('Lv.' + b.level, px + bw/2, py + bh - 15);
             }
@@ -237,7 +239,7 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR MULTI-TÁCTIL (ZOOM POR PELLIZCO ESTABLE) ---
+// --- MOTOR TÁCTIL ---
 let pointers = new Map(); let initialCam = { x: 0, y: 0 }; let startDragPan = { x: 0, y: 0 }; 
 let hasMoved = false; let isCanvasTouch = false; let initialPinchDist = null; let initialZoom = 1;
 
@@ -313,7 +315,11 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
-// --- COMBATE CON TEMPORIZADORES ---
+
+// ==========================================
+// FUNCIONES DE COMBATE Y TEMPORIZADOR
+// ==========================================
+
 function startCombatMatch() {
     if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en el Cuartel!");
     
@@ -329,7 +335,7 @@ function startCombatMatch() {
     document.getElementById('main-hud').classList.add('hidden'); 
     document.getElementById('combat-ui').classList.remove('hidden');
     document.getElementById('combat-status-text').innerText = "El ataque comienza en:";
-    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
+    camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.0;
 
     updateCombatTimerUI();
     if(combatTimerInterval) clearInterval(combatTimerInterval);
@@ -391,7 +397,7 @@ function resolveCombat(type) {
     
     if (type === 'win') {
         let lootedCoins = 50; resources.gold += 250; resources.elixir += 250; resources.points += 20; 
-        resources.gems += 5; // Recompensa extra en gemas
+        resources.gems += 5; 
         showNotification(`¡VICTORIA!\nRegresan: ${surviving} 🗡️`); 
     } else if (type === 'lose' || type === 'lose_time') { 
         showNotification(`DERROTA... El Ayuntamiento sobrevivió.\nRegresan: ${surviving} 🗡️`);
@@ -413,6 +419,7 @@ function endCombat() {
     updateUI();
 }
 
+
 // --- GESTIÓN DE TIENDA Y CONSTRUCCIÓN ---
 function openShop() { isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('shop-wood').innerText = Math.floor(resources.gold); document.getElementById('shop-stone').innerText = Math.floor(resources.elixir); document.getElementById('shop-coins').innerText = Math.floor(resources.gems); }
 function closeShop() { isBuildMode = false; document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
@@ -423,6 +430,11 @@ function switchShopTab(tabId) {
 }
 
 function selectBuilding(type) {
+    // RESTRICCIÓN DE CHOZA DE CONSTRUCTOR
+    if (type !== 'builder_hut' && !buildings.some(b => b.type === 'builder_hut')) {
+        return showNotification("¡Necesitas una Choza de Constructor primero!");
+    }
+
     if(selectedBuildingId) cancelEdit();
     pendingBuildingType = type; pendingBuildingData = entityData[type];
     pGridX = Math.floor(camera.x / TILE_SIZE); pGridY = Math.floor(camera.y / TILE_SIZE);
@@ -458,7 +470,7 @@ function confirmPlacement() {
     updateCapacity(); updateUI(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- EDICIÓN (Mejorar, Entrenar) ---
+// --- EDICIÓN ---
 function getRepairCost(b) {
     let data = entityData[b.type]; let ratio = 1 - (b.hp / b.maxHp);
     return { gold: Math.ceil((data.gold || 0) * ratio), elixir: Math.ceil((data.elixir || 0) * ratio) };
@@ -476,10 +488,8 @@ function selectExistingBuilding(id) {
     
     if (b.hp <= 0) {
         document.getElementById('ruin-controls').classList.remove('hidden');
-        
         let btnDestroyRuin = document.getElementById('btn-destroy-ruin');
         if(b.type === 'townhall') btnDestroyRuin.style.display = 'none'; else btnDestroyRuin.style.display = 'block';
-
         document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.gold}🪙 ${data.elixir}💧</small>`;
     } else {
         document.getElementById('edit-controls').classList.remove('hidden');
@@ -487,11 +497,9 @@ function selectExistingBuilding(id) {
         let btnTrain = document.getElementById('btn-train-troop');
         if (b.type === 'barracks') { btnTrain.style.display = 'block'; } else { btnTrain.style.display = 'none'; }
 
-        // MEJORAR AYUNTAMIENTO
         let btnUpgrade = document.getElementById('btn-upgrade');
         if (b.type === 'townhall' && b.level === 1) { btnUpgrade.style.display = 'block'; } else { btnUpgrade.style.display = 'none'; }
 
-        // OCULTAR DESTRUIR SI ES AYUNTAMIENTO
         let btnDestroy = document.getElementById('btn-destroy-init');
         if (b.type === 'townhall') { btnDestroy.style.display = 'none'; } else { btnDestroy.style.display = 'block'; }
 
@@ -558,8 +566,8 @@ function startRelocate() {
 function updateCapacity() { 
     let th = buildings.find(b => b.type === 'townhall');
     let baseCap = (th && th.level === 2) ? 2500 : 1000;
-    maxGold = baseCap + (buildings.filter(b => b.type === 'vault_wood' || b.type === 'vault_coins').filter(b => b.hp > 0).length * 500);
-    maxElixir = baseCap + (buildings.filter(b => b.type === 'vault_stone' && b.hp > 0).length * 500);
+    maxGold = baseCap + (buildings.filter(b => b.type === 'vault_gold' && b.hp > 0).length * 500);
+    maxElixir = baseCap + (buildings.filter(b => b.type === 'vault_elixir' && b.hp > 0).length * 500);
     maxTroops = buildings.filter(b => b.type === 'camp' && b.hp > 0).length * entityData.camp.capacity; 
 }
 
