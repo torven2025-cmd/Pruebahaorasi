@@ -53,6 +53,7 @@ button, .shop-card, #shop-ui { pointer-events: auto; }
 
 #placement-controls, #edit-controls, #destroy-controls, #ruin-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 95%; max-width: 500px; pointer-events: auto; }
 #placement-controls button, #edit-controls button, #destroy-controls button, #ruin-controls button { flex: 1 1 30%; padding: 12px 5px; font-size: 0.9rem; font-weight: bold; border-radius: 8px; color: white; border: none; box-shadow: 0 5px rgba(0,0,0,0.5); cursor: pointer; text-shadow: 1px 1px 2px black; }
+
 #btn-upgrade { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); flex-basis: 100% !important; margin-bottom: 5px;}
 #btn-train-troop { background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%); flex-basis: 100% !important; margin-bottom: 5px;}
 #btn-repair { background: linear-gradient(180deg, #f1c40f 0%, #f39c12 100%); color: black !important; text-shadow: none !important;}
