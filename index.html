@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Ayuntamiento & Fixes</title>
+    <title>Castle Battle - Estable y Corregido</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -20,13 +20,11 @@
         
         <div id="ui-layer">
             
-            <!-- HUD PRINCIPAL -->
             <div id="main-hud">
                 <div id="top-left-controls">
                     <button class="icon-btn" onclick="toggleFullScreen()" id="btn-fs" title="Pantalla Completa">🔲</button>
                 </div>
 
-                <!-- Recursos (Monedas, Elixir, Gemas, Tropas) -->
                 <div id="ui-top-right">
                     <div class="res-pill pill-gold">
                         <div class="res-value" id="res-gold">0/1000</div>
@@ -55,13 +53,11 @@
                 </button>
             </div>
 
-            <!-- CONTROLES DE COLOCACIÓN -->
             <div id="placement-controls" class="hidden">
                 <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
                 <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
             </div>
 
-            <!-- CONTROLES DE EDICIÓN -->
             <div id="edit-controls" class="hidden">
                 <button id="btn-upgrade" onclick="upgradeBuilding()" style="display:none;">✨ Mejorar</button>
                 <button id="btn-train-troop" onclick="trainTroop()" style="display:none;">🗡️ Entrenar (25💧)</button>
@@ -82,7 +78,6 @@
                 <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
             </div>
 
-            <!-- UI DE COMBATE CON TEMPORIZADORES -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
@@ -92,7 +87,6 @@
                 </div>
             </div>
 
-            <!-- MODAL DE LA TIENDA -->
             <div id="shop-ui" class="hidden">
                 <div class="shop-panel">
                     <div class="shop-top-icon">
@@ -119,7 +113,6 @@
                             </button>
                         </div>
 
-                        <!-- RECURSOS (Modificado como pediste) -->
                         <div id="tab-recursos" class="shop-grid hidden">
                             <button class="shop-card" onclick="selectBuilding('builder_hut')">
                                 <h3>Choza de constructor</h3><p class="desc">Básico para construir (2x2)</p><div class="price">100🪙</div>
