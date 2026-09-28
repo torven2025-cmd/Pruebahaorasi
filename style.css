@@ -15,16 +15,15 @@ button, .shop-card, #shop-ui { pointer-events: auto; }
 #top-left-controls { position: absolute; top: 15px; left: 15px; display: flex; flex-direction: column; gap: 10px; }
 .icon-btn { width: 45px; height: 45px; border-radius: 10px; background: rgba(0,0,0,0.6); color: white; font-size: 1.2rem; border: 2px solid rgba(255,255,255,0.3); cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.5);}
 
-#ui-top-center { position: absolute; top: 15px; left: 50%; transform: translateX(-50%); display: flex; gap: 15px; pointer-events: auto; }
-.info-pill { background: rgba(0,0,0,0.5); padding: 5px 15px; border-radius: 20px; color: white; font-weight: bold; font-size: 0.9rem; border: 1px solid rgba(255,255,255,0.2); text-shadow: 1px 1px 2px black; }
-
+/* HUD COLORES DE RECURSOS (Moneda, Elixir, Gemas) */
 #ui-top-right { position: absolute; top: 15px; right: 15px; display: flex; flex-direction: column; gap: 8px; pointer-events: auto; align-items: flex-end;}
-.res-pill { display: flex; justify-content: flex-end; align-items: center; min-width: 130px; height: 28px; border-radius: 14px; padding-right: 35px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); font-weight: bold; color: white; text-shadow: 1px 1px 2px black; box-shadow: 0 4px 6px rgba(0,0,0,0.5); font-size: 0.9rem; position: relative; }
+.res-pill { display: flex; justify-content: flex-end; align-items: center; min-width: 140px; height: 28px; border-radius: 14px; padding-right: 35px; background: rgba(0,0,0,0.5); border: 2px solid rgba(255,255,255,0.2); font-weight: bold; color: white; text-shadow: 1px 1px 2px black; box-shadow: 0 4px 6px rgba(0,0,0,0.5); font-size: 0.9rem; position: relative; }
 .res-value { margin-right: 5px; }
 .res-icon { position: absolute; right: -5px; top: -5px; width: 34px; height: 34px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.1rem; border: 2px solid #222; box-shadow: 0 2px 5px rgba(0,0,0,0.8); }
-.pill-wood .res-icon { background: linear-gradient(to bottom, #f1c40f, #e67e22); }
-.pill-stone .res-icon { background: linear-gradient(to bottom, #af7ac5, #8e44ad); }
-.pill-coins .res-icon { background: linear-gradient(to bottom, #2ecc71, #27ae60); }
+
+.pill-gold .res-icon { background: linear-gradient(to bottom, #f1c40f, #e67e22); }
+.pill-elixir .res-icon { background: linear-gradient(to bottom, #af7ac5, #8e44ad); }
+.pill-gems .res-icon { background: linear-gradient(to bottom, #2ecc71, #27ae60); }
 .pill-troops .res-icon { background: linear-gradient(to bottom, #95a5a6, #7f8c8d); }
 
 .corner-btn { position: absolute; bottom: 20px; padding: 8px 25px; border-radius: 12px; font-weight: 900; font-size: 1.2rem; color: white; border: 3px solid #222; box-shadow: 0 6px 10px rgba(0,0,0,0.6); cursor: pointer; pointer-events: auto; text-shadow: 1px 1px 2px black; display: flex; flex-direction: column; align-items: center; justify-content: center; }
@@ -55,14 +54,18 @@ button, .shop-card, #shop-ui { pointer-events: auto; }
 
 #placement-controls, #edit-controls, #destroy-controls, #ruin-controls { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; width: 95%; max-width: 500px; pointer-events: auto; }
 #placement-controls button, #edit-controls button, #destroy-controls button, #ruin-controls button { flex: 1 1 30%; padding: 12px 5px; font-size: 0.9rem; font-weight: bold; border-radius: 8px; color: white; border: none; box-shadow: 0 5px rgba(0,0,0,0.5); cursor: pointer; text-shadow: 1px 1px 2px black; }
+
+/* Nuevo Botón Mejorar */
+#btn-upgrade { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); flex-basis: 100% !important; margin-bottom: 5px;}
 #btn-train-troop { background: linear-gradient(180deg, #9b59b6 0%, #8e44ad 100%); flex-basis: 100% !important; margin-bottom: 5px;}
+
 #btn-repair { background: linear-gradient(180deg, #f1c40f 0%, #f39c12 100%); color: black !important; text-shadow: none !important;}
 #btn-rebuild, #btn-confirm { background: linear-gradient(180deg, #2ecc71 0%, #27ae60 100%); }
 #btn-relocate { background: linear-gradient(180deg, #3498db 0%, #2980b9 100%); }
 #btn-destroy-init, #btn-destroy-ruin, #btn-confirm-destroy { background: linear-gradient(180deg, #e74c3c 0%, #c0392b 100%); }
 #btn-cancel, #btn-cancel-edit, #btn-cancel-destroy, #btn-cancel-ruin { background: linear-gradient(180deg, #95a5a6 0%, #7f8c8d 100%); }
 
-/* === UI DE COMBATE (Caja muy pequeña y limpia) === */
+/* Caja de combate chiquita y limpia */
 #combat-ui { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); pointer-events: none; z-index: 15; }
 #combat-header { background: rgba(139, 0, 0, 0.85); padding: 5px 15px; border-radius: 8px; text-align: center; color: white; border: 2px solid #ff4500; pointer-events: auto; box-shadow: 0 4px 10px rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; justify-content: center;}
 #combat-header h2 { font-size: 0.9rem; margin: 0; text-shadow: 1px 1px 0px #000;}
