@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Combate Reconstruido</title>
+    <title>Castle Battle - Base Builder</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -44,10 +44,6 @@
                     </div>
                 </div>
 
-                <button id="btn-attack-hud" class="corner-btn" onclick="startCombatMatch()">
-                    <div class="btn-icon">🗺️</div><span>Atacar</span>
-                </button>
-
                 <button id="btn-shop-hud" class="corner-btn" onclick="openShop()">
                     <div class="btn-icon">🔨</div><span>Tienda</span>
                 </button>
@@ -76,16 +72,6 @@
             <div id="destroy-controls" class="hidden">
                 <button id="btn-cancel-destroy" onclick="cancelEdit()">❌ Cancelar</button>
                 <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
-            </div>
-
-            <!-- UI DE COMBATE (Sin el texto de 10s) -->
-            <div id="combat-ui" class="hidden">
-                <div id="combat-header">
-                    <h2>🔥 ASALTO EN CURSO 🔥</h2>
-                    <p id="combat-status-text">Tiempo restante:</p>
-                    <div id="combat-timer">03:00</div>
-                    <button onclick="surrender()">Rendirse y Retirarse</button>
-                </div>
             </div>
 
             <div id="shop-ui" class="hidden">
