@@ -8,11 +8,25 @@ window.addEventListener('resize', resizeCanvas); resizeCanvas();
 const TILE_SIZE = 25; 
 let gridSize = 40; 
 
-// SIN GUARDADO LOCAL
+// SIN GUARDADO LOCAL - ECONOMÍA: MONEDAS, ELIXIR, GEMAS
 let resources = { gold: 1500, elixir: 1500, points: 0, troops: 5, gems: 0 };
 let buildings = [];
 
-// DATOS ESTRICTOS DE ENTIDADES
+// ESTADÍSTICAS DEL AYUNTAMIENTO (Niveles 1 al 10)
+const thStats = [
+    { hp: 0, cap: 0, cost: 0 },
+    { hp: 400, cap: 1000, cost: 0 },         // Nivel 1
+    { hp: 800, cap: 2500, cost: 1000 },      // Nivel 2
+    { hp: 1200, cap: 5000, cost: 2500 },     // Nivel 3
+    { hp: 1600, cap: 10000, cost: 5000 },    // Nivel 4
+    { hp: 2000, cap: 20000, cost: 10000 },   // Nivel 5
+    { hp: 2500, cap: 35000, cost: 25000 },   // Nivel 6
+    { hp: 3000, cap: 50000, cost: 50000 },   // Nivel 7
+    { hp: 3800, cap: 75000, cost: 100000 },  // Nivel 8
+    { hp: 4600, cap: 100000, cost: 250000 }, // Nivel 9
+    { hp: 5500, cap: 150000, cost: 500000 }  // Nivel 10
+];
+
 const entityData = {
     townhall: { color: '#4a4a4a', emoji: '🏛️', w: 4, h: 4 }, 
     camp: { gold: 200, elixir: 150, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5, w: 3, h: 3 },
@@ -27,7 +41,7 @@ const entityData = {
     wall: { gold: 40, elixir: 20, color: '#555', emoji: '🧱', maxHp: 400, w: 1, h: 1 }
 };
 
-let maxTroops = 0; let maxGold = 2500; let maxElixir = 2500;
+let maxTroops = 0; let maxGold = 1000; let maxElixir = 1000;
 let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 };
 let isBuildMode = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
@@ -41,11 +55,11 @@ let combatTimerInterval = null;
 let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
 let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
 
-// CREACIÓN BASE INICIAL
+// CREACIÓN BASE INICIAL (Con Ayuntamiento Nivel 1 y Choza)
 if (buildings.length === 0) {
-    buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 2, ...entityData.townhall, maxHp: 800, hp: 800 });
-    buildings.push({ id: 2, gridX: 14, gridY: 18, type: 'camp', ...entityData.camp, hp: entityData.camp.maxHp });
-    buildings.push({ id: 3, gridX: 23, gridY: 18, type: 'barracks', ...entityData.barracks, hp: entityData.barracks.maxHp });
+    buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 1, ...entityData.townhall, maxHp: 400, hp: 400 });
+    buildings.push({ id: 2, gridX: 15, gridY: 18, type: 'builder_hut', ...entityData.builder_hut, maxHp: 100, hp: 100 });
+    buildings.push({ id: 3, gridX: 14, gridY: 14, type: 'camp', ...entityData.camp, maxHp: 200, hp: 200 });
     updateCapacity();
 }
 
@@ -75,7 +89,7 @@ setInterval(() => {
 
 
 // ==========================================
-// MOTOR DE COMBATE COMPLETO Y RESTAURADO
+// MOTOR DE COMBATE ANTI-CONGELAMIENTOS
 // ==========================================
 
 function update() {
@@ -92,11 +106,17 @@ function update() {
             if (troop.target) {
                 let tx = troop.target.gridX * TILE_SIZE + (troop.target.w * TILE_SIZE)/2;
                 let ty = troop.target.gridY * TILE_SIZE + (troop.target.h * TILE_SIZE)/2;
-                let dx = tx - troop.x, dy = ty - troop.y; let dist = Math.hypot(dx, dy);
+                let dx = tx - troop.x, dy = ty - troop.y; 
+                let dist = Math.hypot(dx, dy);
                 
+                if (isNaN(dist) || dist === 0) dist = 1; // ESCUDO ANTI-CONGELAMIENTO (Evita división por cero)
+
                 if (dist > (TILE_SIZE + troop.radius)) {
-                    troop.x += (dx / dist) * troop.speed; troop.y += (dy / dist) * troop.speed;
-                } else if (frameCount % 60 === 0) troop.target.hp -= troop.damage; 
+                    troop.x += (dx / dist) * troop.speed; 
+                    troop.y += (dy / dist) * troop.speed;
+                } else if (frameCount % 60 === 0) {
+                    troop.target.hp -= troop.damage; 
+                }
             }
         });
 
@@ -121,13 +141,15 @@ function update() {
 function getNearestBuilding(x, y) {
     let nearest = null, minDist = Infinity;
     buildings.forEach(b => {
-        let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
+        let bx = b.gridX * TILE_SIZE + (b.w * TILE_SIZE)/2;
+        let by = b.gridY * TILE_SIZE + (b.h * TILE_SIZE)/2;
         let dist = Math.hypot(bx - x, by - y);
         if (dist < minDist) { minDist = dist; nearest = b; }
     });
     return nearest;
 }
 
+// ZONA TRANSPARENTE EN COMBATE (Margen de 1 cuadro)
 function isRestrictedZone(gX, gY) {
     for (let b of buildings) {
         if (gX >= b.gridX - 1 && gX < b.gridX + b.w + 1 && gY >= b.gridY - 1 && gY < b.gridY + b.h + 1) return true;
@@ -160,6 +182,7 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
+    // ZONA TRANSPARENTE DE COMBATE
     if (inCombat) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         for (let x = 0; x < gridSize; x++) {
@@ -183,7 +206,12 @@ function draw() {
         }
 
         ctx.fillStyle = b.color; ctx.fillRect(px, py, bw, bh);
-        let hpRatio = b.hp / b.maxHp; let perimeter = (bw * 2) + (bh * 2);
+        
+        // ESCUDO ANTI-CONGELAMIENTO PARA BARRA DE VIDA
+        let hpRatio = b.hp / b.maxHp; 
+        if(isNaN(hpRatio) || !isFinite(hpRatio)) hpRatio = 1;
+
+        let perimeter = (bw * 2) + (bh * 2);
 
         if (isBuildMode && selectedBuildingId === b.id) {
             ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.strokeRect(px, py, bw, bh);
@@ -227,7 +255,10 @@ function draw() {
         ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = 'white'; ctx.font = `14px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🗡️', t.x, t.y);
-        ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 10, t.y - 18, 20 * (t.hp/100), 4);
+        
+        // ESCUDO ANTI-CONGELAMIENTO PARA BARRA TROPAS
+        let thp = t.hp / 100; if(isNaN(thp)) thp = 1;
+        ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 10, t.y - 18, 20 * thp, 4);
     });
 
     lasers.forEach(l => {
@@ -302,7 +333,7 @@ window.addEventListener('pointerup', e => {
         let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
 
         if (inCombat && combatPhase !== 'end') {
-            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega en la zona verde.");
+            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega tropas en la zona verde.");
             else deployTroop(worldX, worldY);
         } else if (!pendingBuildingData) {
             let clickedBuilding = buildings.find(b => gX >= b.gridX && gX < b.gridX + b.w && gY >= b.gridY && gY < b.gridY + b.h);
@@ -315,18 +346,15 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
-
-// ==========================================
-// FUNCIONES DE COMBATE Y TEMPORIZADOR
-// ==========================================
+// --- LÓGICA DE COMBATE CON TEMPORIZADORES Y REDIRECCIÓN ---
 
 function startCombatMatch() {
-    if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en el Cuartel!");
+    if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en un Cuartel!");
     
     mySavedBase = JSON.parse(JSON.stringify(buildings)); 
     
     buildings = [
-        { id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 2, ...entityData.townhall, hp: 800, maxHp: 800 },
+        { id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 1, ...entityData.townhall, hp: 400, maxHp: 400 },
         { id: 4, gridX: 18, gridY: 14, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
         { id: 5, gridX: 23, gridY: 18, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
     ];
@@ -419,7 +447,6 @@ function endCombat() {
     updateUI();
 }
 
-
 // --- GESTIÓN DE TIENDA Y CONSTRUCCIÓN ---
 function openShop() { isBuildMode = true; document.getElementById('main-hud').classList.add('hidden'); document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('shop-wood').innerText = Math.floor(resources.gold); document.getElementById('shop-stone').innerText = Math.floor(resources.elixir); document.getElementById('shop-coins').innerText = Math.floor(resources.gems); }
 function closeShop() { isBuildMode = false; document.getElementById('shop-ui').classList.add('hidden'); document.getElementById('main-hud').classList.remove('hidden'); }
@@ -430,11 +457,9 @@ function switchShopTab(tabId) {
 }
 
 function selectBuilding(type) {
-    // RESTRICCIÓN DE CHOZA DE CONSTRUCTOR
     if (type !== 'builder_hut' && !buildings.some(b => b.type === 'builder_hut')) {
         return showNotification("¡Necesitas una Choza de Constructor primero!");
     }
-
     if(selectedBuildingId) cancelEdit();
     pendingBuildingType = type; pendingBuildingData = entityData[type];
     pGridX = Math.floor(camera.x / TILE_SIZE); pGridY = Math.floor(camera.y / TILE_SIZE);
@@ -470,7 +495,7 @@ function confirmPlacement() {
     updateCapacity(); updateUI(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- EDICIÓN ---
+// --- EDICIÓN (Mejorar) ---
 function getRepairCost(b) {
     let data = entityData[b.type]; let ratio = 1 - (b.hp / b.maxHp);
     return { gold: Math.ceil((data.gold || 0) * ratio), elixir: Math.ceil((data.elixir || 0) * ratio) };
@@ -490,7 +515,7 @@ function selectExistingBuilding(id) {
         document.getElementById('ruin-controls').classList.remove('hidden');
         let btnDestroyRuin = document.getElementById('btn-destroy-ruin');
         if(b.type === 'townhall') btnDestroyRuin.style.display = 'none'; else btnDestroyRuin.style.display = 'block';
-        document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.gold}🪙 ${data.elixir}💧</small>`;
+        document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.gold || 0}🪙 ${data.elixir || 0}💧</small>`;
     } else {
         document.getElementById('edit-controls').classList.remove('hidden');
         
@@ -498,7 +523,10 @@ function selectExistingBuilding(id) {
         if (b.type === 'barracks') { btnTrain.style.display = 'block'; } else { btnTrain.style.display = 'none'; }
 
         let btnUpgrade = document.getElementById('btn-upgrade');
-        if (b.type === 'townhall' && b.level === 1) { btnUpgrade.style.display = 'block'; } else { btnUpgrade.style.display = 'none'; }
+        if (b.type === 'townhall' && b.level < 10) { 
+            let nextLv = b.level + 1; let cost = thStats[nextLv].cost;
+            btnUpgrade.style.display = 'block'; btnUpgrade.innerHTML = `✨ Mejorar (Lv.${nextLv})<br><small>${cost}🪙</small>`;
+        } else { btnUpgrade.style.display = 'none'; }
 
         let btnDestroy = document.getElementById('btn-destroy-init');
         if (b.type === 'townhall') { btnDestroy.style.display = 'none'; } else { btnDestroy.style.display = 'block'; }
@@ -527,20 +555,23 @@ function repairBuilding() {
 
 function rebuildBuilding() {
     let b = buildings.find(x => x.id === selectedBuildingId); let data = entityData[b.type];
-    if (resources.gold >= data.gold && resources.elixir >= data.elixir) {
-        resources.gold -= data.gold; resources.elixir -= data.elixir;
+    let costG = data.gold || 0; let costE = data.elixir || 0;
+    if (resources.gold >= costG && resources.elixir >= costE) {
+        resources.gold -= costG; resources.elixir -= costE;
         b.hp = b.maxHp; updateCapacity(); updateUI(); showNotification("Estructura Reconstruida"); cancelEdit();
     } else showNotification("Recursos insuficientes");
 }
 
 function upgradeBuilding() {
     let b = buildings.find(x => x.id === selectedBuildingId);
-    if (b && b.type === 'townhall' && b.level === 1) {
-        if (resources.gold >= 1000) {
-            resources.gold -= 1000;
-            b.level = 2; b.maxHp = 800; b.hp = 800;
-            updateCapacity(); updateUI(); showNotification("¡Ayuntamiento nivel 2!"); cancelEdit();
-        } else showNotification("Faltan Monedas para mejorar.");
+    if (b && b.type === 'townhall' && b.level < 10) {
+        let nextLv = b.level + 1;
+        let cost = thStats[nextLv].cost;
+        if (resources.gold >= cost) {
+            resources.gold -= cost;
+            b.level = nextLv; b.maxHp = thStats[nextLv].hp; b.hp = b.maxHp;
+            updateCapacity(); updateUI(); showNotification(`¡Ayuntamiento nivel ${nextLv}!`); cancelEdit();
+        } else showNotification(`Faltan Monedas (${cost}🪙)`);
     }
 }
 
@@ -565,7 +596,9 @@ function startRelocate() {
 
 function updateCapacity() { 
     let th = buildings.find(b => b.type === 'townhall');
-    let baseCap = (th && th.level === 2) ? 2500 : 1000;
+    let thLevel = th ? (th.level || 1) : 1;
+    let baseCap = thStats[thLevel] ? thStats[thLevel].cap : 1000;
+    
     maxGold = baseCap + (buildings.filter(b => b.type === 'vault_gold' && b.hp > 0).length * 500);
     maxElixir = baseCap + (buildings.filter(b => b.type === 'vault_elixir' && b.hp > 0).length * 500);
     maxTroops = buildings.filter(b => b.type === 'camp' && b.hp > 0).length * entityData.camp.capacity; 
