@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Combate Reparado al 100%</title>
+    <title>Castle Battle - Combate Directo</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -78,11 +78,12 @@
                 <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
             </div>
 
+            <!-- UI DE COMBATE (Sin 10s de espera, directo a 3 minutos) -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
-                    <p id="combat-status-text">El ataque comienza en:</p>
-                    <div id="combat-timer">00:10</div>
+                    <p>Tiempo restante:</p>
+                    <div id="combat-timer">03:00</div>
                     <button onclick="surrender()">Rendirse y Retirarse</button>
                 </div>
             </div>
