@@ -6,26 +6,29 @@ function resizeCanvas() { canvas.width = window.innerWidth; canvas.height = wind
 window.addEventListener('resize', resizeCanvas); resizeCanvas();
 
 const TILE_SIZE = 50; 
-let gridSize = 15;
-let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1 };
-
 let savedData = JSON.parse(localStorage.getItem('castleBattleSave')) || null;
-let resources = savedData ? savedData.resources : { wood: 100, stone: 100, points: 0, troops: 0 };
+
+// Lógica de expansión guardada
+let gridSize = savedData ? savedData.gridSize : 15;
+let expansionCost = savedData ? savedData.expansionCost : 100;
+
+let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1 };
+let resources = savedData ? savedData.resources : { wood: 300, stone: 300, coins: 0, points: 0, troops: 0 };
 let buildings = savedData ? savedData.buildings : [];
+
 let maxTroops = 0; 
+let maxCoins = 100; // Capacidad base de monedas (El almacén la sube)
 
 let isBuildMode = false; let inCombat = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
-
-// ESTADOS DEL DRAG & DROP
-let pendingBuildingType = null;
-let pendingBuildingData = null;
-let pGridX = -1; let pGridY = -1;
+let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
 
 const entityData = {
     castle: { color: '#4a4a4a', emoji: '🏰', maxHp: 1000 },
     lumbermill: { wood: 20, stone: 10, color: '#27ae60', emoji: '🪚', maxHp: 150 },
     mine: { wood: 10, stone: 20, color: '#95a5a6', emoji: '⛏️', maxHp: 150 },
+    goldmine: { wood: 50, stone: 50, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150 }, // Genera monedas lento
+    vault: { wood: 100, stone: 100, color: '#9b59b6', emoji: '🏦', maxHp: 400, capacityCoins: 500 }, // Almacén
     camp: { wood: 50, stone: 30, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5 },
     wall: { wood: 10, stone: 5, color: '#7f8c8d', emoji: '', maxHp: 400 },
     tower: { wood: 20, stone: 15, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 20, range: 200 }
@@ -36,19 +39,31 @@ if (buildings.length === 0) {
     saveGame();
 }
 
-// Economía Pasiva
+// Economía Pasiva (Las monedas tardan más en generarse)
+let goldGenTimer = 0;
 setInterval(() => {
     if (inCombat) return;
-    let woodGen = 0, stoneGen = 0;
+    let woodGen = 0, stoneGen = 0, goldGen = 0;
+    goldGenTimer++;
+
     buildings.forEach(b => {
         if (b.type === 'castle') { woodGen += 1; stoneGen += 1; }
         if (b.type === 'lumbermill') woodGen += 2;
         if (b.type === 'mine') stoneGen += 2;
+        // La mina de oro genera 1 moneda cada 3 segundos
+        if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
     });
-    if (woodGen > 0 || stoneGen > 0) {
-        resources.wood += woodGen; resources.stone += stoneGen;
-        updateUI(); saveGame();
+
+    if (goldGenTimer >= 3) goldGenTimer = 0;
+
+    let uiNeedsUpdate = false;
+    if (woodGen > 0 || stoneGen > 0) { resources.wood += woodGen; resources.stone += stoneGen; uiNeedsUpdate = true; }
+    if (goldGen > 0 && resources.coins < maxCoins) { 
+        resources.coins = Math.min(resources.coins + goldGen, maxCoins); 
+        uiNeedsUpdate = true; 
     }
+    
+    if (uiNeedsUpdate) { updateUI(); saveGame(); }
 }, 1000);
 
 function update() {
@@ -163,33 +178,23 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR MULTI-TÁCTIL (1 DEDO = EDIFICIO, 2 DEDOS = CÁMARA) ---
-let pointers = new Map();
-let initialCam = { x: 0, y: 0 };
-let startDragPan = { x: 0, y: 0 };
-let hasMoved = false;
-
+// --- MOTOR MULTI-TÁCTIL ---
+let pointers = new Map(); let initialCam = { x: 0, y: 0 }; let startDragPan = { x: 0, y: 0 }; let hasMoved = false;
 function updatePointers(e) { pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); }
 
 canvas.addEventListener('pointerdown', e => {
-    updatePointers(e);
-    hasMoved = false;
-
+    updatePointers(e); hasMoved = false;
     if (pointers.size === 1) {
         let pts = Array.from(pointers.values());
         if (pendingBuildingData) {
-            // Un toque mueve el edificio inmediatamente a esa posición
             let worldX = ((pts[0].x - canvas.width/2) / camera.zoom) + camera.x;
             let worldY = ((pts[0].y - canvas.height/2) / camera.zoom) + camera.y;
-            pGridX = Math.floor(worldX / TILE_SIZE); pGridY = Math.floor(worldY / TILE_SIZE);
-            pGridX = Math.max(0, Math.min(pGridX, gridSize - 1));
-            pGridY = Math.max(0, Math.min(pGridY, gridSize - 1));
+            pGridX = Math.max(0, Math.min(Math.floor(worldX / TILE_SIZE), gridSize - 1));
+            pGridY = Math.max(0, Math.min(Math.floor(worldY / TILE_SIZE), gridSize - 1));
         } else {
-            startDragPan = { x: pts[0].x, y: pts[0].y };
-            initialCam = { x: camera.x, y: camera.y };
+            startDragPan = { x: pts[0].x, y: pts[0].y }; initialCam = { x: camera.x, y: camera.y };
         }
     } else if (pointers.size === 2) {
-        // Dos dedos preparan el movimiento de la cámara, incluso si hay un edificio
         let pts = Array.from(pointers.values());
         startDragPan = { x: (pts[0].x + pts[1].x)/2, y: (pts[0].y + pts[1].y)/2 };
         initialCam = { x: camera.x, y: camera.y };
@@ -203,19 +208,16 @@ window.addEventListener('pointermove', e => {
     if (pointers.size === 1) {
         let pts = Array.from(pointers.values());
         if (pendingBuildingData) {
-            // Un dedo: Mueve solo la estructura (La cámara se bloquea)
             let worldX = ((pts[0].x - canvas.width/2) / camera.zoom) + camera.x;
             let worldY = ((pts[0].y - canvas.height/2) / camera.zoom) + camera.y;
-            pGridX = Math.floor(worldX / TILE_SIZE); pGridY = Math.floor(worldY / TILE_SIZE);
-            pGridX = Math.max(0, Math.min(pGridX, gridSize - 1)); pGridY = Math.max(0, Math.min(pGridY, gridSize - 1));
+            pGridX = Math.max(0, Math.min(Math.floor(worldX / TILE_SIZE), gridSize - 1));
+            pGridY = Math.max(0, Math.min(Math.floor(worldY / TILE_SIZE), gridSize - 1));
         } else {
-            // Un dedo (modo normal): Mueve la cámara
             let dx = pts[0].x - startDragPan.x, dy = pts[0].y - startDragPan.y;
             if (Math.abs(dx) > 10 || Math.abs(dy) > 10) hasMoved = true;
             camera.x = initialCam.x - (dx / camera.zoom); camera.y = initialCam.y - (dy / camera.zoom);
         }
     } else if (pointers.size === 2) {
-        // Dos dedos: Mueve la cámara siempre
         let pts = Array.from(pointers.values());
         let midX = (pts[0].x + pts[1].x)/2, midY = (pts[0].y + pts[1].y)/2;
         let dx = midX - startDragPan.x, dy = midY - startDragPan.y;
@@ -234,35 +236,44 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => pointers.delete(e.pointerId));
 
+// --- TIENDA Y EXPANSIÓN ---
+function openShop() { 
+    document.getElementById('shop-ui').classList.remove('hidden');
+    document.getElementById('expansion-cost-text').innerText = expansionCost;
+}
+function closeShop() { document.getElementById('shop-ui').classList.add('hidden'); }
+
+function buyExpansion() {
+    if (resources.coins >= expansionCost) {
+        resources.coins -= expansionCost;
+        gridSize += 5; // Expandir el mapa 5 casillas
+        expansionCost += 100; // La próxima cuesta más
+        document.getElementById('expansion-cost-text').innerText = expansionCost;
+        showNotification(`¡Mapa expandido a ${gridSize}x${gridSize}!`);
+        updateUI(); saveGame();
+    } else {
+        showNotification("No tienes suficientes Monedas");
+    }
+}
+
 // --- UI DE CONSTRUCCIÓN ---
 function enterBuildMode() {
-    isBuildMode = true;
-    document.getElementById('normal-ui').classList.add('hidden');
-    document.getElementById('build-ui').classList.remove('hidden');
-    document.getElementById('build-tray').classList.remove('hidden');
+    isBuildMode = true; document.getElementById('normal-ui').classList.add('hidden');
+    document.getElementById('build-ui').classList.remove('hidden'); document.getElementById('build-tray').classList.remove('hidden');
 }
-
 function exitBuildMode() {
-    isBuildMode = false; cancelPlacement();
-    document.getElementById('build-ui').classList.add('hidden');
+    isBuildMode = false; cancelPlacement(); document.getElementById('build-ui').classList.add('hidden');
     document.getElementById('normal-ui').classList.remove('hidden');
 }
-
 function selectBuilding(type) {
-    pendingBuildingType = type;
-    pendingBuildingData = entityData[type];
-    pGridX = Math.floor(camera.x / TILE_SIZE);
-    pGridY = Math.floor(camera.y / TILE_SIZE);
-    document.getElementById('build-tray').classList.add('hidden');
-    document.getElementById('placement-controls').classList.remove('hidden');
+    pendingBuildingType = type; pendingBuildingData = entityData[type];
+    pGridX = Math.floor(camera.x / TILE_SIZE); pGridY = Math.floor(camera.y / TILE_SIZE);
+    document.getElementById('build-tray').classList.add('hidden'); document.getElementById('placement-controls').classList.remove('hidden');
 }
-
 function cancelPlacement() {
     pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
-    document.getElementById('placement-controls').classList.add('hidden');
-    document.getElementById('build-tray').classList.remove('hidden');
+    document.getElementById('placement-controls').classList.add('hidden'); document.getElementById('build-tray').classList.remove('hidden');
 }
-
 function confirmPlacement() {
     if (!pendingBuildingData) return;
     if (buildings.some(b => b.gridX === pGridX && b.gridY === pGridY)) return showNotification("Casilla ocupada");
@@ -271,13 +282,17 @@ function confirmPlacement() {
     resources.wood -= pendingBuildingData.wood; resources.stone -= pendingBuildingData.stone;
     buildings.push({ id: Date.now(), gridX: pGridX, gridY: pGridY, type: pendingBuildingType, ...pendingBuildingData, hp: pendingBuildingData.maxHp });
     
-    updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!");
-    cancelPlacement(); 
+    updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- UTILIDADES ---
-function saveGame() { if (!inCombat) localStorage.setItem('castleBattleSave', JSON.stringify({ resources, buildings })); }
-function updateCapacity() { maxTroops = buildings.filter(b => b.type === 'camp').length * entityData.camp.capacity; }
+// --- UTILIDADES Y COMBATE ---
+function saveGame() { if (!inCombat) localStorage.setItem('castleBattleSave', JSON.stringify({ resources, buildings, gridSize, expansionCost })); }
+
+function updateCapacity() { 
+    maxTroops = buildings.filter(b => b.type === 'camp').length * entityData.camp.capacity; 
+    // Actualizar capacidad de monedas (Base 100 + 500 por cada almacén)
+    maxCoins = 100 + (buildings.filter(b => b.type === 'vault').length * entityData.vault.capacityCoins);
+}
 
 function trainTroop() {
     updateCapacity();
@@ -294,11 +309,10 @@ function startCombatMatch() {
         { id: 2, gridX: 6, gridY: 7, type: 'wall', ...entityData.wall, hp: entityData.wall.maxHp },
         { id: 3, gridX: 8, gridY: 7, type: 'wall', ...entityData.wall, hp: entityData.wall.maxHp },
         { id: 4, gridX: 7, gridY: 5, type: 'tower', ...entityData.tower, hp: entityData.tower.maxHp },
-        { id: 5, gridX: 7, gridY: 9, type: 'mine', ...entityData.mine, hp: entityData.mine.maxHp }
+        { id: 5, gridX: 7, gridY: 9, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp } // Enemigo con mina de oro
     ];
     inCombat = true; deployedTroops = []; lasers = [];
-    document.getElementById('normal-ui').classList.add('hidden');
-    document.getElementById('combat-ui').classList.remove('hidden');
+    document.getElementById('normal-ui').classList.add('hidden'); document.getElementById('combat-ui').classList.remove('hidden');
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
 }
 
@@ -310,7 +324,14 @@ function deployTroop(x, y) {
     deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 8, target: null });
 }
 
-function winCombat() { showNotification("¡VICTORIA! 100🪵 100🪨 20🏆 ganados"); resources.wood += 100; resources.stone += 100; resources.points += 20; setTimeout(endCombat, 2500); }
+function winCombat() { 
+    // Ganar da un botín que incluye monedas
+    let lootedCoins = 25;
+    showNotification(`¡VICTORIA! 100🪵 100🪨 ${lootedCoins}🪙 20🏆`); 
+    resources.wood += 100; resources.stone += 100; resources.points += 20; 
+    resources.coins = Math.min(resources.coins + lootedCoins, maxCoins); // Respetar el límite de almacén
+    setTimeout(endCombat, 2500); 
+}
 function loseCombat() { showNotification("DERROTA... Tus tropas perecieron."); setTimeout(endCombat, 2500); }
 function endCombat() {
     inCombat = false; deployedTroops = []; lasers = []; buildings = mySavedBase; updateCapacity(); 
@@ -320,6 +341,7 @@ function endCombat() {
 
 function updateUI() {
     document.getElementById('res-wood').innerText = resources.wood; document.getElementById('res-stone').innerText = resources.stone;
+    document.getElementById('res-coins').innerText = `${resources.coins}/${maxCoins}`; // Muestra actual/máximo
     document.getElementById('res-troops').innerText = `${resources.troops}/${maxTroops}`; document.getElementById('res-points').innerText = resources.points;
 }
 function changeZoom(amount) { camera.zoom = Math.max(0.4, Math.min(camera.zoom + amount, 2.5)); }
