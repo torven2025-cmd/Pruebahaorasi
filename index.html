@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - HUD Estable</title>
+    <title>Castle Battle - HUD Clash Of Clans</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -19,14 +19,12 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="ui-layer">
-            <!-- HUD PRINCIPAL LIMPIO -->
+            
             <div id="main-hud">
-                <!-- Pantalla Completa (Arriba a la Izquierda) -->
                 <div id="top-left-controls">
                     <button class="icon-btn" onclick="toggleFullScreen()" id="btn-fs" title="Pantalla Completa">🔲</button>
                 </div>
 
-                <!-- Recursos Estilo CoC (Arriba a la Derecha) -->
                 <div id="ui-top-right">
                     <div class="res-pill pill-wood">
                         <div class="res-value" id="res-wood">0</div>
@@ -46,7 +44,6 @@
                     </div>
                 </div>
 
-                <!-- Botones Inferiores Estilo CoC -->
                 <button id="btn-attack-hud" class="corner-btn" onclick="startCombatMatch()">
                     <div class="btn-icon">🗺️</div><span>Atacar</span>
                 </button>
@@ -56,13 +53,11 @@
                 </button>
             </div>
 
-            <!-- CONTROLES DE COLOCACIÓN (Aparecen al elegir algo en la tienda) -->
             <div id="placement-controls" class="hidden">
                 <button id="btn-cancel" onclick="cancelPlacement()">❌ Cancelar</button>
                 <button id="btn-confirm" onclick="confirmPlacement()">✅ Colocar</button>
             </div>
 
-            <!-- CONTROLES DE EDICIÓN (Al tocar un edificio en el mapa) -->
             <div id="edit-controls" class="hidden">
                 <button id="btn-train-troop" onclick="trainTroop()" style="display:none;">🗡️ Entrenar Bárbaro (25🪵)</button>
                 <button id="btn-repair" onclick="repairBuilding()">🔨 Reparar</button>
@@ -71,20 +66,17 @@
                 <button id="btn-cancel-edit" onclick="cancelEdit()">❌ Salir</button>
             </div>
 
-            <!-- CONTROLES DE RUINA -->
             <div id="ruin-controls" class="hidden">
                 <button id="btn-rebuild" onclick="rebuildBuilding()">🏗️ Reconstruir</button>
                 <button id="btn-destroy-ruin" onclick="initDestroy()">💥 Limpiar Restos</button>
                 <button id="btn-cancel-ruin" onclick="cancelEdit()">❌ Salir</button>
             </div>
 
-            <!-- CONFIRMAR DESTRUCCIÓN -->
             <div id="destroy-controls" class="hidden">
                 <button id="btn-cancel-destroy" onclick="cancelEdit()">❌ Cancelar</button>
                 <button id="btn-confirm-destroy" onclick="confirmDestroy()">✅ Confirmar (40%)</button>
             </div>
 
-            <!-- UI DE COMBATE -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
@@ -93,11 +85,9 @@
                 </div>
             </div>
 
-            <!-- MODAL DE LA TIENDA (NUEVO DISEÑO FIEL A CoC) -->
             <div id="shop-ui" class="hidden">
                 <div class="shop-panel">
                     
-                    <!-- Icono Superior Centrado -->
                     <div class="shop-top-icon">
                         <div class="hammer-saw-icon">🔨🪚</div>
                     </div>
@@ -106,7 +96,6 @@
                     
                     <h2 class="shop-title">Estructuras y trampas</h2>
                     
-                    <!-- Pestañas -->
                     <div class="shop-tabs">
                         <button class="tab-btn active" onclick="switchShopTab('ejercito')">Ejército</button>
                         <button class="tab-btn" onclick="switchShopTab('recursos')">Recursos</button>
@@ -114,7 +103,6 @@
                         <button class="tab-btn" onclick="switchShopTab('trampas')">Trampas</button>
                     </div>
 
-                    <!-- Contenido de la Tienda -->
                     <div class="shop-content-area">
                         <!-- EJÉRCITO -->
                         <div id="tab-ejercito" class="shop-grid">
@@ -133,28 +121,28 @@
                         <!-- RECURSOS -->
                         <div id="tab-recursos" class="shop-grid hidden">
                             <button class="shop-card" onclick="selectBuilding('builder_hut')">
-                                <h3>Choza de constructor</h3><p class="desc">Básico para construir</p><div class="price">100🪵</div>
+                                <h3>Choza constructor</h3><p class="desc">Básico para aldea</p><div class="price">100🪵</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('mine')">
-                                <h3>Mina de piedra</h3><p class="desc">Extrae piedra del suelo</p><div class="price">50🪵 150🪨</div>
+                                <h3>Mina de piedra</h3><p class="desc">Extrae piedra</p><div class="price">50🪵 150🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('goldmine')">
-                                <h3>Mina de oro</h3><p class="desc">Extrae monedas valiosas</p><div class="price">250🪵 250🪨</div>
+                                <h3>Mina de oro</h3><p class="desc">Extrae monedas</p><div class="price">250🪵 250🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('lumbermill')">
-                                <h3>Choza de leñador</h3><p class="desc">Tala árboles para madera</p><div class="price">150🪵 50🪨</div>
+                                <h3>Choza de leñador</h3><p class="desc">Extrae madera</p><div class="price">150🪵 50🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('miner_hut')">
-                                <h3>Choza de minero</h3><p class="desc">Acelera la extracción</p><div class="price">150🪵 150🪨</div>
+                                <h3>Choza de minero</h3><p class="desc">Acelera extracción</p><div class="price">150🪵 150🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('vault_stone')">
-                                <h3>Almacén Piedra</h3><p class="desc">Aumenta capacidad</p><div class="price">200🪵 200🪨</div>
+                                <h3>Almacén Piedra</h3><p class="desc">Guarda piedra</p><div class="price">200🪵 200🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('vault_wood')">
-                                <h3>Almacén Madera</h3><p class="desc">Aumenta capacidad</p><div class="price">200🪵 200🪨</div>
+                                <h3>Almacén Madera</h3><p class="desc">Guarda madera</p><div class="price">200🪵 200🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('vault_coins')">
-                                <h3>Almacén Monedas</h3><p class="desc">Protege tus monedas</p><div class="price">400🪵 400🪨</div>
+                                <h3>Almacén Monedas</h3><p class="desc">Guarda monedas</p><div class="price">400🪵 400🪨</div>
                             </button>
                         </div>
 
@@ -162,17 +150,17 @@
                         <div id="tab-defensas" class="shop-grid hidden">
                             <button class="shop-card" onclick="selectBuilding('cannon')">
                                 <h3>Cañón</h3>
-                                <p class="desc">Los cañones son ideales para defender cualquier zona de la aldea.</p>
+                                <p class="desc">Defensa ideal para cualquier zona terrestre.</p>
                                 <div class="price">200🪵 200🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('tower')">
-                                <h3>Torre de arqueras</h3>
-                                <p class="desc">Alcanza enemigos a gran distancia.</p>
+                                <h3>Torre arqueras</h3>
+                                <p class="desc">Dispara a distancia protegiendo la base.</p>
                                 <div class="price">250🪵 250🪨</div>
                             </button>
                             <button class="shop-card" onclick="selectBuilding('wall')">
                                 <h3>Muro</h3>
-                                <p class="desc">Mantiene a salvo tu aldea.</p>
+                                <p class="desc">Protege tu aldea frenando enemigos.</p>
                                 <div class="price">40🪵 20🪨</div>
                             </button>
                         </div>
@@ -183,7 +171,6 @@
                         </div>
                     </div>
 
-                    <!-- RECURSOS EN TIENDA -->
                     <div class="shop-footer">
                         <div class="shop-res res-wood"><span id="shop-wood">0</span> 🪵</div>
                         <div class="shop-res res-stone"><span id="shop-stone">0</span> 🪨</div>
