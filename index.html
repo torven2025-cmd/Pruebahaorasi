@@ -3,10 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Castle Battle - Beta 12 (Bordes de Vida)</title>
+    <title>Castle Battle - Modo Horizontal</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <!-- Pantalla que pide girar el dispositivo -->
+    <div id="rotate-device-screen">
+        <div class="rotate-content">
+            <span class="rotate-icon">📱➡️🖥️</span>
+            <h2>Gira tu dispositivo</h2>
+            <p>Castle Battle se juega en modo horizontal para una mejor experiencia táctica.</p>
+        </div>
+    </div>
+
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
@@ -19,10 +28,13 @@
                 <div class="resource" title="Puntos">🏆 <span id="res-points">0</span></div>
             </div>
 
+            <!-- UI NORMAL -->
             <div id="normal-ui">
                 <div id="zoom-controls">
                     <button onclick="changeZoom(0.2)">🔍+</button>
                     <button onclick="changeZoom(-0.2)">🔍-</button>
+                    <!-- Botón de Pantalla Completa -->
+                    <button onclick="toggleFullScreen()" id="btn-fs" style="margin-top: 15px; font-size: 1rem;">🔲</button>
                 </div>
                 <div id="action-menu">
                     <button class="action-btn build-mode-btn" onclick="enterBuildMode()">🔨 Construir</button>
@@ -33,6 +45,7 @@
                 </div>
             </div>
 
+            <!-- UI MODO CONSTRUCCIÓN -->
             <div id="build-ui" class="hidden">
                 <button id="btn-exit-build" onclick="exitBuildMode()">Salir del Modo</button>
                 
@@ -84,6 +97,7 @@
                 </div>
             </div>
 
+            <!-- UI DE COMBATE -->
             <div id="combat-ui" class="hidden">
                 <div id="combat-header">
                     <h2>🔥 ASALTO EN CURSO 🔥</h2>
@@ -92,6 +106,7 @@
                 </div>
             </div>
 
+            <!-- UI DE LA TIENDA -->
             <div id="shop-ui" class="hidden">
                 <div class="shop-panel">
                     <h2>🏪 Tienda del Reino</h2>
