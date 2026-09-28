@@ -8,11 +8,10 @@ window.addEventListener('resize', resizeCanvas); resizeCanvas();
 const TILE_SIZE = 25; 
 let gridSize = 40; 
 
-// SIN GUARDADO LOCAL - MODO ESTABLE Y SIN ERRORES
+// SIN GUARDADO LOCAL PARA EVITAR BUGS EN MODO INCÓGNITO
 let resources = { gold: 1500, elixir: 1500, points: 0, troops: 5, gems: 0 };
 let buildings = [];
 
-// ESTADÍSTICAS DEL AYUNTAMIENTO (Niveles 1 al 10)
 const thStats = [
     { hp: 0, cap: 0, cost: 0 },
     { hp: 400, cap: 1000, cost: 0 },         
@@ -46,16 +45,11 @@ let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 }
 let isBuildMode = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
 
-// ESTADOS DEL COMBATE
-let inCombat = false; 
-let combatPhase = 'none'; 
-let combatSeconds = 0; 
-let combatTimerInterval = null;
+let inCombat = false; let combatPhase = 'none'; let combatSeconds = 0; let combatTimerInterval = null;
 
 let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
 let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
 
-// CREACIÓN BASE INICIAL EXACTA
 if (buildings.length === 0) {
     buildings.push({ id: 1, gridX: 18, gridY: 18, type: 'townhall', level: 1, ...entityData.townhall, maxHp: 400, hp: 400 });
     buildings.push({ id: 2, gridX: 15, gridY: 18, type: 'builder_hut', ...entityData.builder_hut, maxHp: 100, hp: 100 });
@@ -63,7 +57,6 @@ if (buildings.length === 0) {
     updateCapacity();
 }
 
-// GENERACIÓN DE RECURSOS (Cero deterioro)
 let resourceTimer = 0;
 setInterval(() => {
     if (inCombat) return;
@@ -79,7 +72,6 @@ setInterval(() => {
     });
 
     if (resourceTimer >= 3) resourceTimer = 0;
-    
     if (goldGen > 0 || elixirGen > 0) { 
         resources.gold = Math.min(resources.gold + goldGen, maxGold);
         resources.elixir = Math.min(resources.elixir + elixirGen, maxElixir);
@@ -88,67 +80,64 @@ setInterval(() => {
 }, 1000);
 
 
-// ==========================================
-// MOTOR DE COMBATE A PRUEBA DE ERRORES
-// ==========================================
-
+// ==============================================================
+// MOTOR DE COMBATE A PRUEBA DE FALLOS (Anti-Congelamiento)
+// ==============================================================
 function update() {
-    frameCount++;
-    if (inCombat && combatPhase === 'battle') {
-        buildings = buildings.filter(b => b.hp > 0);
-        
-        let townhallAlive = buildings.some(b => b.type === 'townhall');
-        if (!townhallAlive) { resolveCombat('win'); return; }
-        if (deployedTroops.length === 0 && resources.troops <= 0) { resolveCombat('lose'); return; }
-
-        // Mover tropas
-        deployedTroops.forEach(troop => {
-            if (!troop.target || troop.target.hp <= 0) troop.target = getNearestBuilding(troop.x, troop.y);
+    try {
+        frameCount++;
+        if (inCombat && combatPhase === 'battle') {
+            buildings = buildings.filter(b => b.hp > 0);
             
-            if (troop.target) {
-                // Cálculo seguro del centro del edificio
-                let bw = troop.target.w || 3; let bh = troop.target.h || 3;
-                let tx = troop.target.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
-                let ty = troop.target.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
-                
-                let dx = tx - troop.x, dy = ty - troop.y; 
-                let dist = Math.hypot(dx, dy);
-                
-                // ESCUDO ANTI-CONGELAMIENTO (Evita que las tropas colapsen el motor)
-                if (isNaN(dist) || dist === 0) dist = 1;
+            let townhallAlive = buildings.some(b => b.type === 'townhall');
+            if (!townhallAlive) { resolveCombat('win'); return; }
+            if (deployedTroops.length === 0 && resources.troops <= 0) { resolveCombat('lose'); return; }
 
-                if (dist > (TILE_SIZE + troop.radius)) {
-                    troop.x += (dx / dist) * troop.speed; 
-                    troop.y += (dy / dist) * troop.speed;
-                } else if (frameCount % 60 === 0) {
-                    troop.target.hp -= troop.damage; 
-                }
-            }
-        });
+            deployedTroops.forEach(troop => {
+                if (!troop.target || troop.target.hp <= 0) troop.target = getNearestBuilding(troop.x, troop.y);
+                
+                if (troop.target) {
+                    let bw = troop.target.w || 3; let bh = troop.target.h || 3;
+                    let tx = troop.target.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
+                    let ty = troop.target.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
+                    
+                    let dx = tx - troop.x; let dy = ty - troop.y; 
+                    let dist = Math.hypot(dx, dy);
+                    
+                    // ESCUDO ANTI DIVISION POR CERO
+                    if (dist === 0 || isNaN(dist)) dist = 1;
 
-        // Disparar defensas
-        if (frameCount % 45 === 0) {
-            buildings.forEach(b => {
-                if (b.type === 'tower' || b.type === 'cannon') {
-                    let bw = b.w || 3; let bh = b.h || 3;
-                    let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
-                    let target = null, minDist = b.range || 200;
-                    
-                    deployedTroops.forEach(t => {
-                        let dist = Math.hypot(t.x - bx, t.y - by);
-                        if (dist < minDist && t.hp > 0) { minDist = dist; target = t; }
-                    });
-                    
-                    if (target) { 
-                        target.hp -= (b.damage || 15); 
-                        lasers.push({ x1: bx, y1: by, x2: target.x, y2: target.y, life: 10 }); 
+                    if (dist > (TILE_SIZE + troop.radius)) {
+                        let moveX = (dx / dist) * troop.speed;
+                        let moveY = (dy / dist) * troop.speed;
+                        if(!isNaN(moveX) && !isNaN(moveY)) {
+                            troop.x += moveX; troop.y += moveY;
+                        }
+                    } else if (frameCount % 60 === 0) {
+                        troop.target.hp -= troop.damage; 
                     }
                 }
             });
+
+            if (frameCount % 45 === 0) {
+                buildings.forEach(b => {
+                    if (b.type === 'tower' || b.type === 'cannon') {
+                        let bw = b.w || 3; let bh = b.h || 3;
+                        let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
+                        let target = null, minDist = b.range || 200;
+                        deployedTroops.forEach(t => {
+                            let dist = Math.hypot(t.x - bx, t.y - by);
+                            if (dist < minDist && t.hp > 0) { minDist = dist; target = t; }
+                        });
+                        if (target) { target.hp -= (b.damage || 15); lasers.push({ x1: bx, y1: by, x2: target.x, y2: target.y, life: 10 }); }
+                    }
+                });
+            }
+            deployedTroops = deployedTroops.filter(t => t.hp > 0);
+            lasers.forEach(l => l.life--); lasers = lasers.filter(l => l.life > 0);
         }
-        
-        deployedTroops = deployedTroops.filter(t => t.hp > 0);
-        lasers.forEach(l => l.life--); lasers = lasers.filter(l => l.life > 0);
+    } catch(e) {
+        console.error("Error en Update Combat:", e); // Si algo falla, lo escupe en consola pero no congela el loop
     }
 }
 
@@ -156,15 +145,13 @@ function getNearestBuilding(x, y) {
     let nearest = null, minDist = Infinity;
     buildings.forEach(b => {
         let bw = b.w || 3; let bh = b.h || 3;
-        let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
-        let by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
+        let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
         let dist = Math.hypot(bx - x, by - y);
         if (dist < minDist) { minDist = dist; nearest = b; }
     });
     return nearest;
 }
 
-// ZONA TRANSPARENTE EN COMBATE
 function isRestrictedZone(gX, gY) {
     for (let b of buildings) {
         let bw = b.w || 3; let bh = b.h || 3;
@@ -199,14 +186,11 @@ function draw() {
 
     ctx.strokeStyle = 'rgba(0,0,0,0.5)'; ctx.lineWidth = 4; ctx.strokeRect(0, 0, mapSize, mapSize);
 
-    // ZONA TRANSPARENTE DE COMBATE
     if (inCombat) {
         ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
         for (let x = 0; x < gridSize; x++) {
             for (let y = 0; y < gridSize; y++) {
-                if (isRestrictedZone(x, y)) {
-                    ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
-                }
+                if (isRestrictedZone(x, y)) { ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE); }
             }
         }
     }
@@ -226,9 +210,7 @@ function draw() {
         }
 
         ctx.fillStyle = b.color; ctx.fillRect(px, py, pxW, pyH);
-        let hpRatio = b.hp / b.maxHp; 
-        if(isNaN(hpRatio) || !isFinite(hpRatio)) hpRatio = 1;
-
+        let hpRatio = b.hp / b.maxHp; if(isNaN(hpRatio) || !isFinite(hpRatio)) hpRatio = 1;
         let perimeter = (pxW * 2) + (pyH * 2);
 
         if (isBuildMode && selectedBuildingId === b.id) {
@@ -270,14 +252,13 @@ function draw() {
         ctx.strokeRect(px, py, pxW, pyH); ctx.setLineDash([]);
     }
 
-    // TROPAS SIN ERRORES (Con validación de variables)
     deployedTroops.forEach(t => {
-        if(isNaN(t.x) || isNaN(t.y)) return; // Prevención extrema
+        if(isNaN(t.x) || isNaN(t.y)) return; // Prevención extra para evitar congelamiento de pantalla
         ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = 'white'; ctx.font = `14px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🗡️', t.x, t.y);
         
-        let thp = t.hp / 100; if(isNaN(thp)) thp = 1;
+        let thp = t.hp / 100; if(isNaN(thp) || thp < 0) thp = 0;
         ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 10, t.y - 18, 20 * thp, 4);
     });
 
@@ -288,9 +269,9 @@ function draw() {
     ctx.restore();
 }
 
-function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
+function gameLoop() { try { update(); draw(); } catch(e) { console.error("Error gameLoop:", e); } requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR TÁCTIL ---
+// --- MOTOR TÁCTIL Y ZOOM ---
 let pointers = new Map(); let initialCam = { x: 0, y: 0 }; let startDragPan = { x: 0, y: 0 }; 
 let hasMoved = false; let isCanvasTouch = false; let initialPinchDist = null; let initialZoom = 1;
 
@@ -353,7 +334,7 @@ window.addEventListener('pointerup', e => {
         let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
 
         if (inCombat && combatPhase !== 'end') {
-            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega tropas en la zona verde.");
+            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega en la zona verde.");
             else deployTroop(worldX, worldY);
         } else if (!pendingBuildingData) {
             let clickedBuilding = buildings.find(b => {
@@ -369,11 +350,10 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
-// --- LÓGICA DE COMBATE TOTALMENTE REPARADA ---
+// --- COMBATE AUTOMÁTICO Y REDIRECCIÓN INMEDIATA ---
 function startCombatMatch() {
     if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en el Cuartel!");
     
-    // Guardar base para no perderla
     mySavedBase = JSON.parse(JSON.stringify(buildings)); 
     
     buildings = [
@@ -398,10 +378,7 @@ function combatTick() {
     combatSeconds--;
     
     if(combatPhase === 'prep') {
-        if(combatSeconds <= 0) { 
-            autoDeployTroops(); 
-            startBattlePhase(); 
-        }
+        if(combatSeconds <= 0) { autoDeployTroops(); startBattlePhase(); }
     } else if (combatPhase === 'battle') {
         if(combatSeconds <= 0) {
             let th = buildings.find(b => b.type === 'townhall');
@@ -424,15 +401,14 @@ function updateCombatTimerUI() {
 
 function autoDeployTroops() {
     let boundary = gridSize * TILE_SIZE;
-    // Bucle FOR seguro (evita bloqueos infinitos de memoria)
-    for(let i = 0; i < resources.troops; i++) {
+    while(resources.troops > 0) {
+        resources.troops--;
         let x, y, attempts = 0;
         do { 
             x = Math.random() * boundary; y = Math.random() * boundary; attempts++;
         } while (isRestrictedZone(Math.floor(x/TILE_SIZE), Math.floor(y/TILE_SIZE)) && attempts < 50);
         deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
     }
-    resources.troops = 0;
     updateUI();
 }
 
@@ -449,7 +425,7 @@ function resolveCombat(type) {
     if(combatTimerInterval) clearInterval(combatTimerInterval);
     
     let surviving = deployedTroops.length + resources.troops; 
-    resources.troops = Math.min(maxTroops, surviving);
+    resources.troops = Math.min(Math.max(maxTroops, 0), surviving);
     
     if (type === 'win') {
         let lootedCoins = 50; resources.gold += 250; resources.elixir += 250; resources.points += 20; 
@@ -460,14 +436,16 @@ function resolveCombat(type) {
     } else if (type === 'surrender') { 
         showNotification(`TE RENDISTE.\nRegresan: ${surviving} 🗡️`); 
     }
-    updateUI(); setTimeout(endCombat, 3000);
+    
+    // LA REDIRECCIÓN AHORA ES TOTAL E INMEDIATA
+    updateUI(); 
+    endCombat(); 
 }
 
 function surrender() { resolveCombat('surrender'); }
 
 function endCombat() {
     inCombat = false; combatPhase = 'none'; deployedTroops = []; lasers = []; 
-    // Regresa a la base intacta
     buildings = JSON.parse(JSON.stringify(mySavedBase)); 
     updateCapacity(); 
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.2;
@@ -486,7 +464,6 @@ function switchShopTab(tabId) {
 }
 
 function selectBuilding(type) {
-    // CONDICIÓN CHOZA DE CONSTRUCTOR
     if (type !== 'builder_hut' && !buildings.some(b => b.type === 'builder_hut')) {
         return showNotification("¡Necesitas una Choza de Constructor primero!");
     }
@@ -526,7 +503,6 @@ function confirmPlacement() {
     updateCapacity(); updateUI(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- EDICIÓN (Mejorar) ---
 function getRepairCost(b) {
     let data = entityData[b.type]; let ratio = 1 - (b.hp / b.maxHp);
     return { gold: Math.ceil((data.gold || 0) * ratio), elixir: Math.ceil((data.elixir || 0) * ratio) };
@@ -553,14 +529,12 @@ function selectExistingBuilding(id) {
         let btnTrain = document.getElementById('btn-train-troop');
         if (b.type === 'barracks') { btnTrain.style.display = 'block'; } else { btnTrain.style.display = 'none'; }
 
-        // MEJORAR AYUNTAMIENTO (Cuesta monedas)
         let btnUpgrade = document.getElementById('btn-upgrade');
         if (b.type === 'townhall' && b.level < 10) { 
             let nextLv = b.level + 1; let cost = thStats[nextLv].cost;
             btnUpgrade.style.display = 'block'; btnUpgrade.innerHTML = `✨ Mejorar (Lv.${nextLv})<br><small>${cost}🪙</small>`;
         } else { btnUpgrade.style.display = 'none'; }
 
-        // SIN DESTRUIR EL AYUNTAMIENTO
         let btnDestroy = document.getElementById('btn-destroy-init');
         if (b.type === 'townhall') { btnDestroy.style.display = 'none'; } else { btnDestroy.style.display = 'block'; }
 
