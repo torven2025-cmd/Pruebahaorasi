@@ -8,7 +8,6 @@ window.addEventListener('resize', resizeCanvas); resizeCanvas();
 const TILE_SIZE = 25; 
 let gridSize = 40; 
 
-// SIN GUARDADO LOCAL PARA EVITAR BUGS EN MODO INCÓGNITO
 let resources = { gold: 1500, elixir: 1500, points: 0, troops: 5, gems: 0 };
 let buildings = [];
 
@@ -45,7 +44,7 @@ let camera = { x: (gridSize*TILE_SIZE)/2, y: (gridSize*TILE_SIZE)/2, zoom: 1.2 }
 let isBuildMode = false; let frameCount = 0; 
 let mySavedBase = []; let deployedTroops = []; let lasers = [];
 
-let inCombat = false; let combatPhase = 'none'; let combatSeconds = 0; let combatTimerInterval = null;
+let inCombat = false; let combatSeconds = 180; let combatTimerInterval = null;
 
 let pendingBuildingType = null; let pendingBuildingData = null; let pGridX = -1; let pGridY = -1;
 let selectedBuildingId = null; let isRelocating = false; let relocatingBuilding = null;
@@ -79,65 +78,56 @@ setInterval(() => {
     }
 }, 1000);
 
-
-// ==============================================================
-// MOTOR DE COMBATE A PRUEBA DE FALLOS (Anti-Congelamiento)
-// ==============================================================
+// ==========================================
+// MOTOR DE COMBATE DIRECTO Y FLUIDO
+// ==========================================
 function update() {
-    try {
-        frameCount++;
-        if (inCombat && combatPhase === 'battle') {
-            buildings = buildings.filter(b => b.hp > 0);
+    frameCount++;
+    if (inCombat) {
+        buildings = buildings.filter(b => b.hp > 0);
+        
+        let townhallAlive = buildings.some(b => b.type === 'townhall');
+        if (!townhallAlive) { resolveCombat('win'); return; }
+        if (deployedTroops.length === 0 && resources.troops <= 0) { resolveCombat('lose'); return; }
+
+        deployedTroops.forEach(troop => {
+            if (!troop.target || troop.target.hp <= 0) troop.target = getNearestBuilding(troop.x, troop.y);
             
-            let townhallAlive = buildings.some(b => b.type === 'townhall');
-            if (!townhallAlive) { resolveCombat('win'); return; }
-            if (deployedTroops.length === 0 && resources.troops <= 0) { resolveCombat('lose'); return; }
-
-            deployedTroops.forEach(troop => {
-                if (!troop.target || troop.target.hp <= 0) troop.target = getNearestBuilding(troop.x, troop.y);
+            if (troop.target) {
+                let bw = troop.target.w || 3; let bh = troop.target.h || 3;
+                let tx = troop.target.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
+                let ty = troop.target.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
                 
-                if (troop.target) {
-                    let bw = troop.target.w || 3; let bh = troop.target.h || 3;
-                    let tx = troop.target.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
-                    let ty = troop.target.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
-                    
-                    let dx = tx - troop.x; let dy = ty - troop.y; 
-                    let dist = Math.hypot(dx, dy);
-                    
-                    // ESCUDO ANTI DIVISION POR CERO
-                    if (dist === 0 || isNaN(dist)) dist = 1;
+                let dx = tx - troop.x; let dy = ty - troop.y; 
+                let dist = Math.hypot(dx, dy);
+                
+                if (dist === 0 || isNaN(dist)) dist = 1;
 
-                    if (dist > (TILE_SIZE + troop.radius)) {
-                        let moveX = (dx / dist) * troop.speed;
-                        let moveY = (dy / dist) * troop.speed;
-                        if(!isNaN(moveX) && !isNaN(moveY)) {
-                            troop.x += moveX; troop.y += moveY;
-                        }
-                    } else if (frameCount % 60 === 0) {
-                        troop.target.hp -= troop.damage; 
-                    }
+                if (dist > (TILE_SIZE + troop.radius)) {
+                    troop.x += (dx / dist) * troop.speed; 
+                    troop.y += (dy / dist) * troop.speed;
+                } else if (frameCount % 60 === 0) {
+                    troop.target.hp -= troop.damage; 
+                }
+            }
+        });
+
+        if (frameCount % 45 === 0) {
+            buildings.forEach(b => {
+                if (b.type === 'tower' || b.type === 'cannon') {
+                    let bw = b.w || 3; let bh = b.h || 3;
+                    let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
+                    let target = null, minDist = b.range || 200;
+                    deployedTroops.forEach(t => {
+                        let dist = Math.hypot(t.x - bx, t.y - by);
+                        if (dist < minDist && t.hp > 0) { minDist = dist; target = t; }
+                    });
+                    if (target) { target.hp -= (b.damage || 15); lasers.push({ x1: bx, y1: by, x2: target.x, y2: target.y, life: 10 }); }
                 }
             });
-
-            if (frameCount % 45 === 0) {
-                buildings.forEach(b => {
-                    if (b.type === 'tower' || b.type === 'cannon') {
-                        let bw = b.w || 3; let bh = b.h || 3;
-                        let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
-                        let target = null, minDist = b.range || 200;
-                        deployedTroops.forEach(t => {
-                            let dist = Math.hypot(t.x - bx, t.y - by);
-                            if (dist < minDist && t.hp > 0) { minDist = dist; target = t; }
-                        });
-                        if (target) { target.hp -= (b.damage || 15); lasers.push({ x1: bx, y1: by, x2: target.x, y2: target.y, life: 10 }); }
-                    }
-                });
-            }
-            deployedTroops = deployedTroops.filter(t => t.hp > 0);
-            lasers.forEach(l => l.life--); lasers = lasers.filter(l => l.life > 0);
         }
-    } catch(e) {
-        console.error("Error en Update Combat:", e); // Si algo falla, lo escupe en consola pero no congela el loop
+        deployedTroops = deployedTroops.filter(t => t.hp > 0);
+        lasers.forEach(l => l.life--); lasers = lasers.filter(l => l.life > 0);
     }
 }
 
@@ -145,7 +135,8 @@ function getNearestBuilding(x, y) {
     let nearest = null, minDist = Infinity;
     buildings.forEach(b => {
         let bw = b.w || 3; let bh = b.h || 3;
-        let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2, by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
+        let bx = b.gridX * TILE_SIZE + (bw * TILE_SIZE)/2;
+        let by = b.gridY * TILE_SIZE + (bh * TILE_SIZE)/2;
         let dist = Math.hypot(bx - x, by - y);
         if (dist < minDist) { minDist = dist; nearest = b; }
     });
@@ -253,7 +244,7 @@ function draw() {
     }
 
     deployedTroops.forEach(t => {
-        if(isNaN(t.x) || isNaN(t.y)) return; // Prevención extra para evitar congelamiento de pantalla
+        if(isNaN(t.x) || isNaN(t.y)) return;
         ctx.fillStyle = '#f1c40f'; ctx.beginPath(); ctx.arc(t.x, t.y, t.radius, 0, Math.PI*2); ctx.fill();
         ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.stroke();
         ctx.fillStyle = 'white'; ctx.font = `14px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText('🗡️', t.x, t.y);
@@ -269,7 +260,7 @@ function draw() {
     ctx.restore();
 }
 
-function gameLoop() { try { update(); draw(); } catch(e) { console.error("Error gameLoop:", e); } requestAnimationFrame(gameLoop); } gameLoop(); 
+function gameLoop() { try { update(); draw(); } catch(e) {} requestAnimationFrame(gameLoop); } gameLoop(); 
 
 // --- MOTOR TÁCTIL Y ZOOM ---
 let pointers = new Map(); let initialCam = { x: 0, y: 0 }; let startDragPan = { x: 0, y: 0 }; 
@@ -333,9 +324,18 @@ window.addEventListener('pointerup', e => {
         let worldX = ((e.clientX - canvas.width/2) / camera.zoom) + camera.x; let worldY = ((e.clientY - canvas.height/2) / camera.zoom) + camera.y;
         let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
 
-        if (inCombat && combatPhase !== 'end') {
-            if (isRestrictedZone(gX, gY)) showNotification("Área restringida. Despliega en la zona verde.");
-            else deployTroop(worldX, worldY);
+        if (inCombat) {
+            if (resources.troops > 0) {
+                if (isRestrictedZone(gX, gY)) {
+                    showNotification("Área restringida. Despliega en la zona verde.");
+                } else {
+                    resources.troops--;
+                    updateUI();
+                    deployedTroops.push({ x: worldX, y: worldY, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
+                }
+            } else {
+                showNotification("No te quedan tropas.");
+            }
         } else if (!pendingBuildingData) {
             let clickedBuilding = buildings.find(b => {
                 let bw = b.w || 3; let bh = b.h || 3;
@@ -350,7 +350,7 @@ window.addEventListener('pointerup', e => {
 });
 window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
-// --- COMBATE AUTOMÁTICO Y REDIRECCIÓN INMEDIATA ---
+// --- COMBATE DIRECTO (3 Minutos, Sin Esperas) ---
 function startCombatMatch() {
     if (resources.troops <= 0) return showNotification("¡Entrena tropas primero en el Cuartel!");
     
@@ -362,10 +362,9 @@ function startCombatMatch() {
         { id: 5, gridX: 23, gridY: 18, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
     ];
     
-    inCombat = true; combatPhase = 'prep'; combatSeconds = 10; deployedTroops = []; lasers = [];
+    inCombat = true; combatSeconds = 180; deployedTroops = []; lasers = [];
     document.getElementById('main-hud').classList.add('hidden'); 
     document.getElementById('combat-ui').classList.remove('hidden');
-    document.getElementById('combat-status-text').innerText = "El ataque comienza en:";
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.0;
 
     updateCombatTimerUI();
@@ -374,23 +373,11 @@ function startCombatMatch() {
 }
 
 function combatTick() {
-    if(combatPhase === 'end') return;
     combatSeconds--;
-    
-    if(combatPhase === 'prep') {
-        if(combatSeconds <= 0) { autoDeployTroops(); startBattlePhase(); }
-    } else if (combatPhase === 'battle') {
-        if(combatSeconds <= 0) {
-            let th = buildings.find(b => b.type === 'townhall');
-            if(th && th.hp > 0) resolveCombat('lose_time'); else resolveCombat('win');
-        }
+    if(combatSeconds <= 0) {
+        let th = buildings.find(b => b.type === 'townhall');
+        if(th && th.hp > 0) resolveCombat('lose_time'); else resolveCombat('win');
     }
-    updateCombatTimerUI();
-}
-
-function startBattlePhase() {
-    combatPhase = 'battle'; combatSeconds = 180; 
-    document.getElementById('combat-status-text').innerText = "Tiempo restante:";
     updateCombatTimerUI();
 }
 
@@ -399,37 +386,15 @@ function updateCombatTimerUI() {
     document.getElementById('combat-timer').innerText = m + ":" + (s < 10 ? "0" + s : s);
 }
 
-function autoDeployTroops() {
-    let boundary = gridSize * TILE_SIZE;
-    while(resources.troops > 0) {
-        resources.troops--;
-        let x, y, attempts = 0;
-        do { 
-            x = Math.random() * boundary; y = Math.random() * boundary; attempts++;
-        } while (isRestrictedZone(Math.floor(x/TILE_SIZE), Math.floor(y/TILE_SIZE)) && attempts < 50);
-        deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
-    }
-    updateUI();
-}
-
-function deployTroop(x, y) {
-    if (resources.troops <= 0) return;
-    if (combatPhase === 'prep') startBattlePhase(); 
-    resources.troops--; updateUI();
-    deployedTroops.push({ x: x, y: y, hp: 100, damage: 15, speed: 1.5, radius: 12, target: null });
-}
-
 function resolveCombat(type) {
-    if (combatPhase === 'end') return;
-    combatPhase = 'end';
+    if(!inCombat) return;
     if(combatTimerInterval) clearInterval(combatTimerInterval);
     
     let surviving = deployedTroops.length + resources.troops; 
     resources.troops = Math.min(Math.max(maxTroops, 0), surviving);
     
     if (type === 'win') {
-        let lootedCoins = 50; resources.gold += 250; resources.elixir += 250; resources.points += 20; 
-        resources.gems += 5; 
+        resources.gold += 250; resources.elixir += 250; resources.points += 20; resources.gems += 5; 
         showNotification(`¡VICTORIA!\nRegresan: ${surviving} 🗡️`); 
     } else if (type === 'lose' || type === 'lose_time') { 
         showNotification(`DERROTA... El Ayuntamiento sobrevivió.\nRegresan: ${surviving} 🗡️`);
@@ -437,7 +402,6 @@ function resolveCombat(type) {
         showNotification(`TE RENDISTE.\nRegresan: ${surviving} 🗡️`); 
     }
     
-    // LA REDIRECCIÓN AHORA ES TOTAL E INMEDIATA
     updateUI(); 
     endCombat(); 
 }
@@ -445,7 +409,7 @@ function resolveCombat(type) {
 function surrender() { resolveCombat('surrender'); }
 
 function endCombat() {
-    inCombat = false; combatPhase = 'none'; deployedTroops = []; lasers = []; 
+    inCombat = false; deployedTroops = []; lasers = []; 
     buildings = JSON.parse(JSON.stringify(mySavedBase)); 
     updateCapacity(); 
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 1.2;
@@ -628,7 +592,7 @@ function updateUI() {
 
 function toggleFullScreen() {
     let doc = window.document; let docEl = doc.documentElement;
-    let requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullScreen || docEl.msRequestFullscreen;
+    let requestFullScreen = docEl.requestFullscreen || docEl.mozRequestFullScreen || docEl.webkitRequestFullscreen || docEl.msRequestFullscreen;
     let cancelFullScreen = doc.exitFullscreen || doc.mozCancelFullScreen || doc.webkitExitFullscreen || doc.msExitFullscreen;
     if (!doc.fullscreenElement && !doc.mozFullScreenElement && !doc.webkitFullscreenElement && !doc.msFullscreenElement) {
         requestFullScreen.call(docEl).then(() => { if (screen.orientation && screen.orientation.lock) { screen.orientation.lock('landscape').catch(e => console.log(e)); } }).catch(err => { showNotification(`Error: ${err.message}`); });
