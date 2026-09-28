@@ -10,8 +10,10 @@ let savedData = JSON.parse(localStorage.getItem('castleBattleSave')) || null;
 
 let gridSize = (savedData && savedData.gridSize) ? savedData.gridSize : 15;
 let expansionCost = (savedData && savedData.expansionCost) ? savedData.expansionCost : 100;
+let lastSaveTime = (savedData && savedData.lastSaveTime) ? savedData.lastSaveTime : Date.now();
 
-let resources = savedData ? savedData.resources : { wood: 300, stone: 300, points: 0, troops: 0, coins: 0 };
+// RECURSOS INICIALES (Aumentados para que puedas empezar con los nuevos precios)
+let resources = savedData ? savedData.resources : { wood: 500, stone: 500, points: 0, troops: 0, coins: 0 };
 if (resources.coins === undefined) resources.coins = 0; 
 
 let buildings = savedData ? savedData.buildings : [];
@@ -30,15 +32,16 @@ let selectedBuildingId = null;
 let isRelocating = false;
 let relocatingBuilding = null;
 
+// NUEVOS COSTOS MULTIPLICADOS
 const entityData = {
-    castle: { color: '#4a4a4a', emoji: '🏰', maxHp: 1000 },
-    lumbermill: { wood: 20, stone: 10, color: '#27ae60', emoji: '🪚', maxHp: 150 },
-    mine: { wood: 10, stone: 20, color: '#95a5a6', emoji: '⛏️', maxHp: 150 },
-    goldmine: { wood: 50, stone: 50, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150 },
-    vault: { wood: 100, stone: 100, color: '#9b59b6', emoji: '🏦', maxHp: 400, capacityCoins: 500 }, 
-    camp: { wood: 50, stone: 30, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5 },
-    wall: { wood: 10, stone: 5, color: '#7f8c8d', emoji: '', maxHp: 400 },
-    tower: { wood: 20, stone: 15, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 20, range: 200 }
+    castle: { wood: 1000, stone: 1000, color: '#4a4a4a', emoji: '🏰', maxHp: 1000 },
+    lumbermill: { wood: 150, stone: 50, color: '#27ae60', emoji: '🪚', maxHp: 150 },
+    mine: { wood: 50, stone: 150, color: '#95a5a6', emoji: '⛏️', maxHp: 150 },
+    goldmine: { wood: 250, stone: 250, color: '#f1c40f', emoji: '⛏️🟡', maxHp: 150 },
+    vault: { wood: 400, stone: 400, color: '#9b59b6', emoji: '🏦', maxHp: 400, capacityCoins: 500 }, 
+    camp: { wood: 200, stone: 150, color: '#8B4513', emoji: '⛺', maxHp: 200, capacity: 5 },
+    wall: { wood: 40, stone: 20, color: '#7f8c8d', emoji: '', maxHp: 400 },
+    tower: { wood: 150, stone: 150, color: '#c0392b', emoji: '🗼', maxHp: 300, damage: 20, range: 200 }
 };
 
 if (buildings.length === 0) {
@@ -46,6 +49,14 @@ if (buildings.length === 0) {
     saveGame();
 }
 
+// CALCULAR DETERIORO OFFLINE AL ENTRAR (24 horas = 86400 segundos para llegar a 0)
+let offlineSeconds = (Date.now() - lastSaveTime) / 1000;
+buildings.forEach(b => {
+    let decay = b.maxHp * (offlineSeconds / 86400);
+    b.hp = Math.max(0, b.hp - decay);
+});
+
+// ECONOMÍA PASIVA Y DETERIORO EN TIEMPO REAL
 let goldGenTimer = 0;
 setInterval(() => {
     if (inCombat) return;
@@ -53,20 +64,28 @@ setInterval(() => {
     goldGenTimer++;
 
     buildings.forEach(b => {
-        if (b.type === 'castle') { woodGen += 1; stoneGen += 1; }
-        if (b.type === 'lumbermill') woodGen += 2;
-        if (b.type === 'mine') stoneGen += 2;
-        if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
+        // Solo las estructuras con HP > 0 generan recursos
+        if (b.hp > 0) {
+            if (b.type === 'castle') { woodGen += 1; stoneGen += 1; }
+            if (b.type === 'lumbermill') woodGen += 2;
+            if (b.type === 'mine') stoneGen += 2;
+            if (b.type === 'goldmine' && goldGenTimer >= 3) goldGen += 1; 
+            
+            // Deterioro por segundo (Vida total / 86400 segundos)
+            b.hp = Math.max(0, b.hp - (b.maxHp / 86400));
+        }
     });
 
     if (goldGenTimer >= 3) goldGenTimer = 0;
-
     let uiNeedsUpdate = false;
+    
     if (woodGen > 0 || stoneGen > 0) { resources.wood += woodGen; resources.stone += stoneGen; uiNeedsUpdate = true; }
     if (goldGen > 0 && resources.coins < maxCoins) { 
         resources.coins = Math.min(resources.coins + goldGen, maxCoins); 
         uiNeedsUpdate = true; 
     }
+    
+    // Guardamos constantemente para no perder progreso de deterioro ni farmeo
     if (uiNeedsUpdate) { updateUI(); saveGame(); }
 }, 1000);
 
@@ -138,8 +157,22 @@ function draw() {
 
     buildings.forEach(b => {
         let px = b.gridX * TILE_SIZE, py = b.gridY * TILE_SIZE;
-        ctx.fillStyle = b.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         
+        // ESTADO RUINA (100% Destruida)
+        if (b.hp <= 0) {
+            ctx.fillStyle = '#333'; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+            if (isBuildMode && selectedBuildingId === b.id) {
+                ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            } else {
+                ctx.strokeStyle = 'rgba(0,0,0,0.8)'; ctx.lineWidth = 2; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
+            }
+            ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText('🏚️', px + TILE_SIZE/2, py + TILE_SIZE/2);
+            return; // No dibujar barra de vida
+        }
+
+        // ESTADO NORMAL O DAÑADO
+        ctx.fillStyle = b.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         if (isBuildMode && selectedBuildingId === b.id) {
             ctx.strokeStyle = '#f1c40f'; ctx.lineWidth = 4; ctx.strokeRect(px, py, TILE_SIZE, TILE_SIZE);
         } else {
@@ -150,19 +183,20 @@ function draw() {
             ctx.fillStyle = 'white'; ctx.font = `${TILE_SIZE * 0.6}px Arial`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
             ctx.fillText(b.emoji, px + TILE_SIZE/2, py + TILE_SIZE/2);
         }
-        if (b.hp < b.maxHp) {
+        
+        // Barra de Vida
+        if (b.hp > 0 && b.hp < b.maxHp) {
             ctx.fillStyle = 'black'; ctx.fillRect(px, py - 10, TILE_SIZE, 6);
-            ctx.fillStyle = '#e74c3c'; ctx.fillRect(px, py - 10, TILE_SIZE * (b.hp/b.maxHp), 6);
+            ctx.fillStyle = (b.hp/b.maxHp > 0.5) ? '#2ecc71' : '#e74c3c'; 
+            ctx.fillRect(px, py - 10, TILE_SIZE * (b.hp/b.maxHp), 6);
         }
     });
 
     if (pendingBuildingData && pGridX >= 0 && pGridY >= 0) {
         let px = pGridX * TILE_SIZE; let py = pGridY * TILE_SIZE;
         let isOccupied = buildings.some(b => b.gridX === pGridX && b.gridY === pGridY);
-        
         ctx.fillStyle = isOccupied ? 'rgba(255, 0, 0, 0.5)' : 'rgba(46, 204, 113, 0.5)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-        
         ctx.globalAlpha = 0.8;
         ctx.fillStyle = pendingBuildingData.color; ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
         if (pendingBuildingData.emoji) {
@@ -177,10 +211,8 @@ function draw() {
         ctx.strokeStyle = 'black'; ctx.lineWidth = 1; ctx.stroke();
         ctx.fillStyle = '#e74c3c'; ctx.fillRect(t.x - 6, t.y - 12, 12 * (t.hp/100), 3);
     });
-
     lasers.forEach(l => {
-        ctx.strokeStyle = '#f39c12'; ctx.lineWidth = 3;
-        ctx.beginPath(); ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); ctx.stroke();
+        ctx.strokeStyle = '#f39c12'; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(l.x1, l.y1); ctx.lineTo(l.x2, l.y2); ctx.stroke();
     });
 
     ctx.restore();
@@ -188,42 +220,36 @@ function draw() {
 
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); } gameLoop(); 
 
-// --- MOTOR MULTI-TÁCTIL CORREGIDO ---
+// --- MOTOR MULTI-TÁCTIL ---
 let pointers = new Map();
 let initialCam = { x: 0, y: 0 };
 let startDragPan = { x: 0, y: 0 };
 let hasMoved = false;
-let isCanvasTouch = false; // EVITA QUE LOS BOTONES BUGUEEN EL MAPA
+let isCanvasTouch = false; 
 
 function updatePointers(e) { pointers.set(e.pointerId, { x: e.clientX, y: e.clientY }); }
 
 canvas.addEventListener('pointerdown', e => {
-    isCanvasTouch = true;
-    updatePointers(e);
-    hasMoved = false;
-
+    isCanvasTouch = true; updatePointers(e); hasMoved = false;
     if (pointers.size === 1) {
         let pts = Array.from(pointers.values());
         if (pendingBuildingData) {
             let worldX = ((pts[0].x - canvas.width/2) / camera.zoom) + camera.x;
             let worldY = ((pts[0].y - canvas.height/2) / camera.zoom) + camera.y;
             pGridX = Math.floor(worldX / TILE_SIZE); pGridY = Math.floor(worldY / TILE_SIZE);
-            pGridX = Math.max(0, Math.min(pGridX, gridSize - 1));
-            pGridY = Math.max(0, Math.min(pGridY, gridSize - 1));
+            pGridX = Math.max(0, Math.min(pGridX, gridSize - 1)); pGridY = Math.max(0, Math.min(pGridY, gridSize - 1));
         } else {
-            startDragPan = { x: pts[0].x, y: pts[0].y };
-            initialCam = { x: camera.x, y: camera.y };
+            startDragPan = { x: pts[0].x, y: pts[0].y }; initialCam = { x: camera.x, y: camera.y };
         }
     } else if (pointers.size === 2) {
         let pts = Array.from(pointers.values());
-        startDragPan = { x: (pts[0].x + pts[1].x)/2, y: (pts[0].y + pts[1].y)/2 };
-        initialCam = { x: camera.x, y: camera.y };
+        startDragPan = { x: (pts[0].x + pts[1].x)/2, y: (pts[0].y + pts[1].y)/2 }; initialCam = { x: camera.x, y: camera.y };
     }
 });
 
 window.addEventListener('pointermove', e => {
     if (!pointers.has(e.pointerId)) return;
-    if (!isCanvasTouch) return; // Bloquea si estás deslizando un botón
+    if (!isCanvasTouch) return; 
     updatePointers(e);
 
     if (pointers.size === 1) {
@@ -241,15 +267,14 @@ window.addEventListener('pointermove', e => {
     } else if (pointers.size === 2) {
         let pts = Array.from(pointers.values());
         let midX = (pts[0].x + pts[1].x)/2, midY = (pts[0].y + pts[1].y)/2;
-        let dx = midX - startDragPan.x, dy = midY - startDragPan.y;
-        hasMoved = true;
+        let dx = midX - startDragPan.x, dy = midY - startDragPan.y; hasMoved = true;
         camera.x = initialCam.x - (dx / camera.zoom); camera.y = initialCam.y - (dy / camera.zoom);
     }
 });
 
 window.addEventListener('pointerup', e => {
     pointers.delete(e.pointerId);
-    if (!isCanvasTouch) return; // Si tocaste la UI, no hagas nada en el mapa
+    if (!isCanvasTouch) return; 
     
     if (pointers.size === 0 && !hasMoved) {
         let worldX = ((e.clientX - canvas.width/2) / camera.zoom) + camera.x;
@@ -258,82 +283,50 @@ window.addEventListener('pointerup', e => {
         if (inCombat) {
             deployTroop(worldX, worldY);
         } else if (isBuildMode && !pendingBuildingData) {
-            let gX = Math.floor(worldX / TILE_SIZE);
-            let gY = Math.floor(worldY / TILE_SIZE);
+            let gX = Math.floor(worldX / TILE_SIZE); let gY = Math.floor(worldY / TILE_SIZE);
             let clickedBuilding = buildings.find(b => b.gridX === gX && b.gridY === gY);
             
-            if (clickedBuilding) {
-                selectExistingBuilding(clickedBuilding.id);
-            } else if (selectedBuildingId) {
-                cancelEdit();
-            }
+            if (clickedBuilding) selectExistingBuilding(clickedBuilding.id);
+            else if (selectedBuildingId) cancelEdit();
         }
     }
     if (pointers.size === 0) isCanvasTouch = false;
 });
-window.addEventListener('pointercancel', e => {
-    pointers.delete(e.pointerId);
-    if (pointers.size === 0) isCanvasTouch = false;
-});
+window.addEventListener('pointercancel', e => { pointers.delete(e.pointerId); if (pointers.size === 0) isCanvasTouch = false; });
 
-// --- TIENDA ---
-function openShop() { 
-    document.getElementById('shop-ui').classList.remove('hidden');
-    document.getElementById('expansion-cost-text').innerText = expansionCost;
-}
+function openShop() { document.getElementById('shop-ui').classList.remove('hidden'); document.getElementById('expansion-cost-text').innerText = expansionCost; }
 function closeShop() { document.getElementById('shop-ui').classList.add('hidden'); }
 
 function buyExpansion() {
     if (resources.coins >= expansionCost) {
-        resources.coins -= expansionCost;
-        gridSize += 5;
-        expansionCost += 100;
+        resources.coins -= expansionCost; gridSize += 5; expansionCost += 100;
         document.getElementById('expansion-cost-text').innerText = expansionCost;
-        showNotification(`¡Mapa expandido a ${gridSize}x${gridSize}!`);
-        updateUI(); saveGame();
-    } else {
-        showNotification("No tienes suficientes Monedas");
-    }
+        showNotification(`¡Mapa expandido a ${gridSize}x${gridSize}!`); updateUI(); saveGame();
+    } else showNotification("No tienes suficientes Monedas");
 }
 
-// --- UI DE CONSTRUCCIÓN ---
 function enterBuildMode() {
-    isBuildMode = true;
-    document.getElementById('normal-ui').classList.add('hidden');
-    document.getElementById('build-ui').classList.remove('hidden');
-    document.getElementById('build-tray').classList.remove('hidden');
+    isBuildMode = true; document.getElementById('normal-ui').classList.add('hidden');
+    document.getElementById('build-ui').classList.remove('hidden'); document.getElementById('build-tray').classList.remove('hidden');
 }
 
 function exitBuildMode() {
-    isBuildMode = false; 
-    cancelPlacement(); 
-    cancelEdit();
-    document.getElementById('build-ui').classList.add('hidden');
-    document.getElementById('normal-ui').classList.remove('hidden');
+    isBuildMode = false; cancelPlacement(); cancelEdit();
+    document.getElementById('build-ui').classList.add('hidden'); document.getElementById('normal-ui').classList.remove('hidden');
 }
 
 function selectBuilding(type) {
     if(selectedBuildingId) cancelEdit();
-    pendingBuildingType = type;
-    pendingBuildingData = entityData[type];
-    pGridX = Math.floor(camera.x / TILE_SIZE);
-    pGridY = Math.floor(camera.y / TILE_SIZE);
-    document.getElementById('build-tray').classList.add('hidden');
-    document.getElementById('placement-controls').classList.remove('hidden');
+    pendingBuildingType = type; pendingBuildingData = entityData[type];
+    pGridX = Math.floor(camera.x / TILE_SIZE); pGridY = Math.floor(camera.y / TILE_SIZE);
+    document.getElementById('build-tray').classList.add('hidden'); document.getElementById('placement-controls').classList.remove('hidden');
 }
 
 function cancelPlacement() {
-    if (isRelocating && relocatingBuilding) {
-        buildings.push(relocatingBuilding); 
-        isRelocating = false; relocatingBuilding = null;
-    }
+    if (isRelocating && relocatingBuilding) { buildings.push(relocatingBuilding); isRelocating = false; relocatingBuilding = null; }
     pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
     document.getElementById('placement-controls').classList.add('hidden');
-    
-    // Regresar de forma segura al carrusel
-    selectedBuildingId = null;
-    document.getElementById('edit-controls').classList.add('hidden');
-    document.getElementById('build-tray').classList.remove('hidden');
+    selectedBuildingId = null; document.getElementById('edit-controls').classList.add('hidden'); document.getElementById('ruin-controls').classList.add('hidden'); document.getElementById('build-tray').classList.remove('hidden');
 }
 
 function confirmPlacement() {
@@ -341,50 +334,90 @@ function confirmPlacement() {
     if (buildings.some(b => b.gridX === pGridX && b.gridY === pGridY)) return showNotification("Casilla ocupada");
     
     if (isRelocating) {
-        let dmg = Math.floor(relocatingBuilding.maxHp * 0.05);
-        relocatingBuilding.hp = Math.max(1, relocatingBuilding.hp - dmg);
-        relocatingBuilding.gridX = pGridX;
-        relocatingBuilding.gridY = pGridY;
+        let dmg = Math.floor(relocatingBuilding.maxHp * 0.05); // Pierde 5% de vida al mover
+        relocatingBuilding.hp = Math.max(0, relocatingBuilding.hp - dmg);
+        relocatingBuilding.gridX = pGridX; relocatingBuilding.gridY = pGridY;
         
         buildings.push(relocatingBuilding);
         isRelocating = false; relocatingBuilding = null;
         
         showNotification("Estructura reubicada (-5% HP)");
         pendingBuildingType = null; pendingBuildingData = null; pGridX = -1; pGridY = -1;
-        
-        document.getElementById('placement-controls').classList.add('hidden');
-        document.getElementById('build-tray').classList.remove('hidden');
-        selectedBuildingId = null;
-        saveGame();
-        return;
+        document.getElementById('placement-controls').classList.add('hidden'); document.getElementById('build-tray').classList.remove('hidden');
+        selectedBuildingId = null; saveGame(); return;
     }
 
     if (resources.wood < pendingBuildingData.wood || resources.stone < pendingBuildingData.stone) return showNotification("Recursos insuficientes");
     resources.wood -= pendingBuildingData.wood; resources.stone -= pendingBuildingData.stone;
     buildings.push({ id: Date.now(), gridX: pGridX, gridY: pGridY, type: pendingBuildingType, ...pendingBuildingData, hp: pendingBuildingData.maxHp });
     
-    updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!");
-    cancelPlacement(); 
+    updateCapacity(); updateUI(); saveGame(); showNotification("¡Construcción finalizada!"); cancelPlacement(); 
 }
 
-// --- EDICIÓN (SELECCIÓN, DESTRUIR, REUBICAR) ---
+// --- EDICIÓN (REPARAR, RECONSTRUIR, REUBICAR, DESTRUIR) ---
+function getRepairCost(b) {
+    let data = entityData[b.type]; let ratio = 1 - (b.hp / b.maxHp);
+    return { wood: Math.ceil((data.wood || 0) * ratio), stone: Math.ceil((data.stone || 0) * ratio) };
+}
+
 function selectExistingBuilding(id) {
     selectedBuildingId = id;
+    let b = buildings.find(x => x.id === id);
+    let data = entityData[b.type];
+    
     document.getElementById('build-tray').classList.add('hidden');
     document.getElementById('placement-controls').classList.add('hidden');
     document.getElementById('destroy-controls').classList.add('hidden');
-    document.getElementById('edit-controls').classList.remove('hidden');
+    document.getElementById('edit-controls').classList.add('hidden');
+    document.getElementById('ruin-controls').classList.add('hidden');
+    
+    if (b.hp <= 0) {
+        // ES UNA RUINA
+        document.getElementById('ruin-controls').classList.remove('hidden');
+        document.getElementById('btn-rebuild').innerHTML = `🏗️ Reconstruir<br><small>${data.wood}🪵 ${data.stone}🪨</small>`;
+    } else {
+        // ESTÁ VIVA O DAÑADA
+        document.getElementById('edit-controls').classList.remove('hidden');
+        let btnRepair = document.getElementById('btn-repair');
+        if (b.hp < b.maxHp) {
+            let cost = getRepairCost(b);
+            btnRepair.style.display = 'block';
+            btnRepair.innerHTML = `🔨 Reparar<br><small>${cost.wood}🪵 ${cost.stone}🪨</small>`;
+        } else {
+            btnRepair.style.display = 'none'; // Si está 100% no se muestra reparar
+        }
+    }
 }
 
 function cancelEdit() {
     selectedBuildingId = null;
     document.getElementById('edit-controls').classList.add('hidden');
+    document.getElementById('ruin-controls').classList.add('hidden');
     document.getElementById('destroy-controls').classList.add('hidden');
     document.getElementById('build-tray').classList.remove('hidden');
 }
 
+function repairBuilding() {
+    let b = buildings.find(x => x.id === selectedBuildingId);
+    let cost = getRepairCost(b);
+    if (resources.wood >= cost.wood && resources.stone >= cost.stone) {
+        resources.wood -= cost.wood; resources.stone -= cost.stone;
+        b.hp = b.maxHp; updateCapacity(); updateUI(); saveGame(); showNotification("Estructura Reparada"); cancelEdit();
+    } else showNotification("Recursos insuficientes");
+}
+
+function rebuildBuilding() {
+    let b = buildings.find(x => x.id === selectedBuildingId);
+    let data = entityData[b.type];
+    if (resources.wood >= data.wood && resources.stone >= data.stone) {
+        resources.wood -= data.wood; resources.stone -= data.stone;
+        b.hp = b.maxHp; updateCapacity(); updateUI(); saveGame(); showNotification("Estructura Reconstruida"); cancelEdit();
+    } else showNotification("Recursos insuficientes");
+}
+
 function initDestroy() {
     document.getElementById('edit-controls').classList.add('hidden');
+    document.getElementById('ruin-controls').classList.add('hidden');
     document.getElementById('destroy-controls').classList.remove('hidden');
 }
 
@@ -395,8 +428,7 @@ function confirmDestroy() {
         let refundWood = Math.floor((data.wood || 0) * 0.4);
         let refundStone = Math.floor((data.stone || 0) * 0.4);
         
-        resources.wood += refundWood;
-        resources.stone += refundStone;
+        resources.wood += refundWood; resources.stone += refundStone;
         buildings = buildings.filter(x => x.id !== selectedBuildingId);
         
         updateCapacity(); updateUI(); saveGame();
@@ -409,31 +441,25 @@ function startRelocate() {
     let b = buildings.find(x => x.id === selectedBuildingId);
     if (!b) return;
     
-    isRelocating = true;
-    relocatingBuilding = b;
-    pendingBuildingType = b.type;
-    pendingBuildingData = entityData[b.type];
-    pGridX = b.gridX; 
-    pGridY = b.gridY;
-    
+    isRelocating = true; relocatingBuilding = b; pendingBuildingType = b.type; pendingBuildingData = entityData[b.type];
+    pGridX = b.gridX; pGridY = b.gridY;
     buildings = buildings.filter(x => x.id !== selectedBuildingId);
     
     document.getElementById('edit-controls').classList.add('hidden');
     document.getElementById('placement-controls').classList.remove('hidden');
 }
 
-// --- UTILIDADES ---
-function saveGame() { if (!inCombat) localStorage.setItem('castleBattleSave', JSON.stringify({ resources, buildings, gridSize, expansionCost })); }
+function saveGame() { if (!inCombat) localStorage.setItem('castleBattleSave', JSON.stringify({ resources, buildings, gridSize, expansionCost, lastSaveTime: Date.now() })); }
 
 function updateCapacity() { 
-    maxTroops = buildings.filter(b => b.type === 'camp').length * entityData.camp.capacity; 
-    maxCoins = 100 + (buildings.filter(b => b.type === 'vault').length * entityData.vault.capacityCoins);
+    maxTroops = buildings.filter(b => b.type === 'camp' && b.hp > 0).length * entityData.camp.capacity; 
+    maxCoins = 100 + (buildings.filter(b => b.type === 'vault' && b.hp > 0).length * entityData.vault.capacityCoins);
 }
 
 function trainTroop() {
     updateCapacity();
     if (resources.troops >= maxTroops) return showNotification(`Campamentos llenos (${maxTroops} max).`);
-    if (resources.wood >= 10) { resources.wood -= 10; resources.troops++; updateUI(); saveGame(); showNotification("¡Bárbaro entrenado!");
+    if (resources.wood >= 25) { resources.wood -= 25; resources.troops++; updateUI(); saveGame(); showNotification("¡Bárbaro entrenado!");
     } else showNotification("Falta madera");
 }
 
@@ -448,8 +474,7 @@ function startCombatMatch() {
         { id: 5, gridX: 7, gridY: 9, type: 'goldmine', ...entityData.goldmine, hp: entityData.goldmine.maxHp }
     ];
     inCombat = true; deployedTroops = []; lasers = [];
-    document.getElementById('normal-ui').classList.add('hidden');
-    document.getElementById('combat-ui').classList.remove('hidden');
+    document.getElementById('normal-ui').classList.add('hidden'); document.getElementById('combat-ui').classList.remove('hidden');
     camera.x = (gridSize*TILE_SIZE)/2; camera.y = (gridSize*TILE_SIZE)/2; camera.zoom = 0.8;
 }
 
@@ -462,9 +487,9 @@ function deployTroop(x, y) {
 }
 
 function winCombat() { 
-    let lootedCoins = 25;
-    showNotification(`¡VICTORIA! 100🪵 100🪨 ${lootedCoins}🪙 20🏆`); 
-    resources.wood += 100; resources.stone += 100; resources.points += 20; 
+    let lootedCoins = 50;
+    showNotification(`¡VICTORIA! 250🪵 250🪨 ${lootedCoins}🪙 20🏆`); 
+    resources.wood += 250; resources.stone += 250; resources.points += 20; 
     resources.coins = Math.min(resources.coins + lootedCoins, maxCoins);
     setTimeout(endCombat, 2500); 
 }
@@ -477,7 +502,7 @@ function endCombat() {
 
 function updateUI() {
     document.getElementById('res-wood').innerText = resources.wood; document.getElementById('res-stone').innerText = resources.stone;
-    document.getElementById('res-coins').innerText = `${resources.coins}/${maxCoins}`;
+    document.getElementById('res-coins').innerText = `${Math.floor(resources.coins)}/${maxCoins}`;
     document.getElementById('res-troops').innerText = `${resources.troops}/${maxTroops}`; document.getElementById('res-points').innerText = resources.points;
 }
 function changeZoom(amount) { camera.zoom = Math.max(0.4, Math.min(camera.zoom + amount, 2.5)); }
