@@ -1,14 +1,9 @@
 <!DOCTYPE html>
 <html lang="es">
-
 <head>
     <meta charset="UTF-8">
-
     <meta name="viewport"
-          content="width=device-width,
-                   initial-scale=1.0,
-                   maximum-scale=1.0,
-                   user-scalable=no">
+          content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
     <title>Castle Kingdom</title>
 
@@ -17,642 +12,268 @@
 
 <body>
 
-<div id="rotate-screen">
-
-    <div class="rotate-box">
-
-        <div class="rotate-phone">
-            📱↪️🖥️
-        </div>
-
-        <h1>Castle Kingdom</h1>
-
-        <h2>Gira tu dispositivo</h2>
-
-        <p>
-            El juego está diseñado para jugarse
-            en horizontal.
-        </p>
-
-    </div>
-
-</div>
-
-
 <div id="game">
 
+    <!-- CABECERA -->
+    <header id="topBar">
+
+        <div class="brand">
+            <span class="castle-icon">🏰</span>
+            <div>
+                <strong>Castle Kingdom</strong>
+                <small id="modeText">Tu aldea</small>
+            </div>
+        </div>
+
+        <div class="resources">
+
+            <div class="resource">
+                <span>🪙</span>
+                <strong id="goldText">1000</strong>
+            </div>
+
+            <div class="resource">
+                <span>💧</span>
+                <strong id="elixirText">1000</strong>
+            </div>
+
+            <div class="resource">
+                <span>🏆</span>
+                <strong id="trophyText">0</strong>
+            </div>
+
+        </div>
+
+    </header>
+
+
+    <!-- LIENZO DEL JUEGO -->
     <canvas id="gameCanvas"></canvas>
 
 
-    <!-- =================================================
-         HUD
-    ================================================== -->
+    <!-- INFORMACIÓN DEL OBJETO SELECCIONADO -->
+    <div id="selectionPanel" class="panel hidden">
 
-    <div id="hud">
-
-        <div class="player-panel">
-
-            <div class="avatar">
-                👑
-            </div>
-
+        <div class="panelTitle">
+            <span id="selectionIcon">🏠</span>
             <div>
-
-                <strong>
-                    Mi Reino
-                </strong>
-
-                <small id="player-level">
-                    Ayuntamiento 1
-                </small>
-
+                <strong id="selectionName">Edificio</strong>
+                <small id="selectionLevel">Nivel 1</small>
             </div>
-
         </div>
 
-
-        <div id="resources">
-
-            <div class="resource gold">
-                <span id="gold">1500</span>
-                <b>🪙</b>
-            </div>
-
-            <div class="resource elixir">
-                <span id="elixir">1500</span>
-                <b>💧</b>
-            </div>
-
-            <div class="resource gems">
-                <span id="gems">50</span>
-                <b>💎</b>
-            </div>
-
-            <div class="resource trophies">
-                <span id="trophies">0</span>
-                <b>🏆</b>
-            </div>
-
+        <div class="healthBar">
+            <div id="selectionHealth"></div>
         </div>
 
+        <div id="selectionInfo"></div>
 
-        <button
-            id="fullscreen-btn"
-            class="hud-button"
-            onclick="toggleFullscreen()">
+        <div class="selectionButtons">
+            <button id="moveButton">↔ Mover</button>
+            <button id="upgradeButton">⬆ Mejorar</button>
+            <button id="deleteButton">🗑️</button>
+        </div>
 
-            ⛶
+    </div>
 
+
+    <!-- MENÚ INFERIOR -->
+    <div id="bottomMenu">
+
+        <button class="menuButton active" data-action="build">
+            <span>🏗️</span>
+            <small>Construir</small>
         </button>
 
+        <button class="menuButton" data-action="army">
+            <span>🪖</span>
+            <small>Ejército</small>
+        </button>
 
-        <div id="bottom-left">
+        <button class="menuButton attackButton" data-action="attack">
+            <span>⚔️</span>
+            <small>Atacar</small>
+        </button>
 
-            <button
-                class="main-button attack-button"
-                onclick="openAttackMenu()">
+        <button class="menuButton" data-action="shop">
+            <span>🛒</span>
+            <small>Tienda</small>
+        </button>
 
+        <button class="menuButton" data-action="save">
+            <span>💾</span>
+            <small>Guardar</small>
+        </button>
+
+    </div>
+
+
+    <!-- MENÚ DE CONSTRUCCIÓN -->
+    <div id="buildPanel" class="sidePanel hidden">
+
+        <div class="sideHeader">
+            <strong>Construir</strong>
+            <button id="closeBuild">✕</button>
+        </div>
+
+        <div id="buildingList"></div>
+
+    </div>
+
+
+    <!-- PANEL DEL EJÉRCITO -->
+    <div id="armyPanel" class="sidePanel hidden">
+
+        <div class="sideHeader">
+            <strong>Ejército</strong>
+            <button id="closeArmy">✕</button>
+        </div>
+
+        <div class="armyCard">
+
+            <div class="unitIcon">🪖</div>
+
+            <div class="unitInfo">
+                <strong>Guerrero</strong>
+                <span>❤️ 100</span>
+                <span>⚔️ 20</span>
+                <span>Velocidad 1.4</span>
+            </div>
+
+            <div class="armyCount">
+                <button id="removeWarrior">−</button>
+                <strong id="warriorCount">10</strong>
+                <button id="addWarrior">+</button>
+            </div>
+
+        </div>
+
+        <div class="armyCard">
+
+            <div class="unitIcon">🏹</div>
+
+            <div class="unitInfo">
+                <strong>Arquero</strong>
+                <span>❤️ 65</span>
+                <span>⚔️ 15</span>
+                <span>Alcance 180</span>
+            </div>
+
+            <div class="armyCount">
+                <button id="removeArcher">−</button>
+                <strong id="archerCount">5</strong>
+                <button id="addArcher">+</button>
+            </div>
+
+        </div>
+
+        <div class="armyTotal">
+            Tropas disponibles:
+            <strong id="armyTotal">15</strong>
+        </div>
+
+    </div>
+
+
+    <!-- PANEL DE BATALLA -->
+    <div id="battlePanel" class="battlePanel hidden">
+
+        <div class="battleTop">
+
+            <div>
                 <span>⚔️</span>
-                <b>ATACAR</b>
+                <strong>Batalla</strong>
+            </div>
 
+            <div class="battleStats">
+                <span>🏆 <b id="battleStars">0</b></span>
+                <span>💰 <b id="battleLoot">0</b></span>
+            </div>
+
+        </div>
+
+        <div class="battleInstructions">
+            Toca el terreno exterior para desplegar tropas.
+        </div>
+
+        <div class="deploymentButtons">
+
+            <button id="deployWarrior" class="deploy active">
+                🪖 Guerrero
+                <b id="battleWarriorCount">10</b>
             </button>
 
-
-            <button
-                class="main-button army-button"
-                onclick="openArmy()">
-
-                <span>🪖</span>
-                <b>EJÉRCITO</b>
-
-            </button>
-
-        </div>
-
-
-        <button
-            class="main-button shop-button"
-            onclick="openShop()">
-
-            <span>🔨</span>
-            <b>TIENDA</b>
-
-        </button>
-
-
-        <div id="notifications"></div>
-
-    </div>
-
-
-    <!-- =================================================
-         CONSTRUCCIÓN
-    ================================================== -->
-
-    <div id="build-controls"
-         class="hidden">
-
-        <button
-            id="cancel-build"
-            class="build-action cancel"
-            onclick="cancelConstruction()">
-
-            ✕ CANCELAR
-
-        </button>
-
-
-        <div id="build-hint">
-
-            Mueve la estructura
-            y confirma su posición
-
-        </div>
-
-
-        <button
-            id="confirm-build"
-            class="build-action confirm"
-            onclick="confirmConstruction()">
-
-            ✓ CONFIRMAR
-
-        </button>
-
-    </div>
-
-
-    <!-- =================================================
-         MENÚ EDIFICIO
-    ================================================== -->
-
-    <div id="building-menu"
-         class="panel hidden">
-
-        <button
-            class="close"
-            onclick="closeBuildingMenu()">
-
-            ×
-
-        </button>
-
-
-        <div id="building-icon">
-            🏠
-        </div>
-
-
-        <h2 id="building-name">
-            Edificio
-        </h2>
-
-
-        <div class="building-stats">
-
-            <div>
-
-                <span>❤️</span>
-
-                <b id="building-hp">
-                    100 / 100
-                </b>
-
-            </div>
-
-
-            <div>
-
-                <span>⭐</span>
-
-                <b id="building-level">
-                    Nivel 1
-                </b>
-
-            </div>
-
-        </div>
-
-
-        <div id="upgrade-cost"
-             class="upgrade-cost">
-        </div>
-
-
-        <button
-            id="upgrade-button"
-            class="green-button"
-            onclick="upgradeSelected()">
-
-            ⬆️ MEJORAR
-
-        </button>
-
-
-        <button
-            id="relocate-button"
-            class="blue-button"
-            onclick="relocateSelected()">
-
-            🔄 REUBICAR
-
-        </button>
-
-
-        <button
-            id="destroy-button"
-            class="red-button"
-            onclick="destroySelected()">
-
-            🗑️ ELIMINAR
-
-        </button>
-
-    </div>
-
-
-    <!-- =================================================
-         TIENDA
-    ================================================== -->
-
-    <div id="shop"
-         class="overlay hidden">
-
-        <div class="large-panel">
-
-            <button
-                class="close"
-                onclick="closeShop()">
-
-                ×
-
-            </button>
-
-
-            <div class="panel-title">
-                🔨 TIENDA
-            </div>
-
-
-            <div class="tabs">
-
-                <button
-                    class="tab active"
-                    onclick="shopTab('buildings', this)">
-
-                    🏗️ Edificios
-
-                </button>
-
-
-                <button
-                    class="tab"
-                    onclick="shopTab('defenses', this)">
-
-                    🛡️ Defensas
-
-                </button>
-
-
-                <button
-                    class="tab"
-                    onclick="shopTab('army', this)">
-
-                    ⚔️ Ejército
-
-                </button>
-
-            </div>
-
-
-            <div id="shop-content"
-                 class="shop-grid">
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- =================================================
-         EJÉRCITO
-    ================================================== -->
-
-    <div id="army"
-         class="overlay hidden">
-
-        <div class="large-panel">
-
-            <button
-                class="close"
-                onclick="closeArmy()">
-
-                ×
-
-            </button>
-
-
-            <div class="panel-title">
-                ⚔️ MI EJÉRCITO
-            </div>
-
-
-            <div class="army-header">
-
-                Tropas:
-
-                <strong id="army-count">
-                    0 / 20
-                </strong>
-
-            </div>
-
-
-            <div id="army-content"
-                 class="army-grid">
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- =================================================
-         ATAQUE
-    ================================================== -->
-
-    <div id="attack-menu"
-         class="overlay hidden">
-
-        <div class="attack-panel">
-
-            <button
-                class="close"
-                onclick="closeAttackMenu()">
-
-                ×
-
-            </button>
-
-
-            <div class="panel-title">
-                ⚔️ BÚSQUEDA DE ENEMIGO
-            </div>
-
-
-            <div class="enemy-preview">
-
-                <div class="enemy-castle">
-                    🏰
-                </div>
-
-
-                <div>
-
-                    <h2>
-                        Reino enemigo
-                    </h2>
-
-                    <p>
-                        Despliega tus tropas,
-                        destruye sus edificios
-                        y consigue estrellas.
-                    </p>
-
-                </div>
-
-            </div>
-
-
-            <div class="attack-info">
-
-                <div>
-
-                    🏆
-
-                    <b>
-                        +20
-                    </b>
-
-                    <small>
-                        Trofeos
-                    </small>
-
-                </div>
-
-
-                <div>
-
-                    🪙
-
-                    <b>
-                        +800
-                    </b>
-
-                    <small>
-                        Oro
-                    </small>
-
-                </div>
-
-
-                <div>
-
-                    💧
-
-                    <b>
-                        +800
-                    </b>
-
-                    <small>
-                        Elixir
-                    </small>
-
-                </div>
-
-            </div>
-
-
-            <button
-                class="find-button"
-                onclick="startCombat()">
-
-                ⚔️ ENCONTRAR OPONENTE
-
+            <button id="deployArcher" class="deploy">
+                🏹 Arquero
+                <b id="battleArcherCount">5</b>
             </button>
 
         </div>
 
-    </div>
-
-
-    <!-- =================================================
-         INTERFAZ DE COMBATE
-    ================================================== -->
-
-    <div id="combat-ui"
-         class="hidden">
-
-        <div class="combat-top">
-
-            <div class="combat-player">
-
-                <span>👑</span>
-
-                <b>
-                    MI REINO
-                </b>
-
-                <strong id="combat-my-percent">
-                    0%
-                </strong>
-
-            </div>
-
-
-            <div class="combat-timer"
-                 id="combat-time">
-
-                03:00
-
-            </div>
-
-
-            <div class="combat-player enemy">
-
-                <span>👹</span>
-
-                <b>
-                    ENEMIGO
-                </b>
-
-                <strong id="combat-enemy-percent">
-                    0%
-                </strong>
-
-            </div>
-
-        </div>
-
-
-        <!-- ZONA DE DESPLIEGUE -->
-
-        <div id="deployment-info">
-
-            <span id="deployment-message">
-                Toca el mapa para desplegar tropas
-            </span>
-
-        </div>
-
-
-        <!-- BARRA DE TROPAS -->
-
-        <div id="troop-bar">
-        </div>
-
-
-        <button
-            class="surrender-button"
-            onclick="surrenderCombat()">
-
-            🏳️ Rendirse
-
+        <button id="endBattle" class="endBattle">
+            🏳️ Terminar ataque
         </button>
 
     </div>
 
 
-    <!-- =================================================
-         RESULTADO
-    ================================================== -->
+    <!-- RESULTADO -->
+    <div id="resultOverlay" class="overlay hidden">
 
-    <div id="combat-result"
-         class="overlay hidden">
+        <div class="resultCard">
 
-        <div class="result-panel">
+            <div id="resultIcon">🏆</div>
 
-            <div id="result-icon">
-                🏆
-            </div>
+            <h1 id="resultTitle">Victoria</h1>
 
+            <p id="resultDescription">
+                Has destruido la aldea enemiga.
+            </p>
 
-            <h1 id="result-title">
-                ¡VICTORIA!
-            </h1>
-
-
-            <div class="result-stars"
-                 id="result-stars">
-
-                ⭐ ⭐ ⭐
-
-            </div>
-
-
-            <div class="result-stats">
+            <div class="resultStats">
 
                 <div>
-
-                    <span>💥</span>
-
-                    <b id="result-damage">
-                        100%
-                    </b>
-
-                    <small>
-                        Destrucción
-                    </small>
-
-                </div>
-
-
-                <div>
-
                     <span>🏆</span>
-
-                    <b id="result-trophies">
-                        +20
-                    </b>
-
-                    <small>
-                        Trofeos
-                    </small>
-
+                    <strong id="resultStars">3</strong>
+                    <small>Estrellas</small>
                 </div>
 
+                <div>
+                    <span>🪙</span>
+                    <strong id="resultGold">0</strong>
+                    <small>Oro</small>
+                </div>
 
                 <div>
-
-                    <span>🪙</span>
-
-                    <b id="result-gold">
-                        +800
-                    </b>
-
-                    <small>
-                        Oro
-                    </small>
-
+                    <span>💧</span>
+                    <strong id="resultElixir">0</strong>
+                    <small>Elixir</small>
                 </div>
 
             </div>
 
-
-            <button
-                class="green-button"
-                onclick="closeCombatResult()">
-
-                CONTINUAR
-
+            <button id="returnHome">
+                🏰 Volver a la aldea
             </button>
 
         </div>
+
+    </div>
+
+
+    <!-- MENSAJES -->
+    <div id="toast"></div>
+
+
+    <!-- CONTROLES DE COLOCACIÓN -->
+    <div id="placementControls" class="placementControls hidden">
+
+        <button id="cancelPlacement">✕ Cancelar</button>
+        <button id="confirmPlacement">✓ Confirmar</button>
 
     </div>
 
 </div>
-
 
 <script src="game.js"></script>
 
