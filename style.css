@@ -1,23 +1,16 @@
 * {
-
     box-sizing: border-box;
-
     margin: 0;
     padding: 0;
 
     user-select: none;
     -webkit-user-select: none;
 
-    font-family:
-        Arial,
-        Helvetica,
-        sans-serif;
+    font-family: Arial, Helvetica, sans-serif;
 }
-
 
 html,
 body {
-
     width: 100%;
     height: 100%;
 
@@ -26,25 +19,17 @@ body {
     background: #111;
 }
 
-
 body {
-
     overscroll-behavior: none;
 }
 
-
 button {
-
     font-family: inherit;
-
     cursor: pointer;
-
     border: none;
 }
 
-
 .hidden {
-
     display: none !important;
 }
 
@@ -56,7 +41,6 @@ button {
 #rotate-screen {
 
     position: fixed;
-
     inset: 0;
 
     background:
@@ -78,19 +62,16 @@ button {
     text-align: center;
 }
 
-
 .rotate-box {
 
     width: 80%;
-
     max-width: 450px;
 
     padding: 35px;
 
     border-radius: 25px;
 
-    border:
-        3px solid #f1c40f;
+    border: 3px solid #f1c40f;
 
     background:
         rgba(0,0,0,.65);
@@ -99,14 +80,12 @@ button {
         0 15px 50px #000;
 }
 
-
 .rotate-phone {
 
     font-size: 4rem;
 
     margin-bottom: 20px;
 }
-
 
 .rotate-box h1 {
 
@@ -115,28 +94,13 @@ button {
     margin-bottom: 15px;
 }
 
-
-.rotate-box h2 {
-
-    margin-bottom: 10px;
-}
-
-
-.rotate-box p {
-
-    line-height: 1.5;
-}
-
-
 @media (orientation: portrait) {
 
     #rotate-screen {
-
         display: flex;
     }
 
     #game {
-
         display: none;
     }
 }
@@ -156,7 +120,6 @@ button {
 
     background: #477b29;
 }
-
 
 canvas {
 
@@ -182,8 +145,6 @@ canvas {
     inset: 0;
 
     pointer-events: none;
-
-    z-index: 10;
 }
 
 
@@ -204,8 +165,7 @@ canvas {
 
     gap: 9px;
 
-    padding:
-        6px 12px 6px 6px;
+    padding: 6px 12px 6px 6px;
 
     color: white;
 
@@ -223,10 +183,7 @@ canvas {
     box-shadow:
         0 4px 10px rgba(0,0,0,.7),
         inset 0 1px rgba(255,255,255,.2);
-
-    pointer-events: auto;
 }
-
 
 .player-panel .avatar {
 
@@ -251,14 +208,12 @@ canvas {
     font-size: 22px;
 }
 
-
 .player-panel strong {
 
     display: block;
 
     font-size: 14px;
 }
-
 
 .player-panel small {
 
@@ -287,7 +242,6 @@ canvas {
 
     pointer-events: auto;
 }
-
 
 .resource {
 
@@ -320,7 +274,6 @@ canvas {
         0 3px 6px #000;
 }
 
-
 .resource b {
 
     position: absolute;
@@ -343,7 +296,6 @@ canvas {
     font-size: 17px;
 }
 
-
 .gold b {
 
     background:
@@ -352,7 +304,6 @@ canvas {
             #d99000
         );
 }
-
 
 .elixir b {
 
@@ -363,7 +314,6 @@ canvas {
         );
 }
 
-
 .gems b {
 
     background:
@@ -372,7 +322,6 @@ canvas {
             #00a878
         );
 }
-
 
 .trophies b {
 
@@ -427,18 +376,12 @@ canvas {
 
     display: flex;
 
-    gap: 8px;
-
-    align-items: flex-end;
-
-    pointer-events: auto;
+    gap: 9px;
 }
-
 
 .main-button {
 
-    min-width: 92px;
-
+    min-width: 112px;
     min-height: 67px;
 
     display: flex;
@@ -468,18 +411,15 @@ canvas {
     pointer-events: auto;
 }
 
-
 .main-button span {
 
     font-size: 25px;
 }
 
-
 .main-button b {
 
-    font-size: 11px;
+    font-size: 12px;
 }
-
 
 .attack-button {
 
@@ -490,7 +430,6 @@ canvas {
         );
 }
 
-
 .army-button {
 
     background:
@@ -499,27 +438,6 @@ canvas {
             #6c3483
         );
 }
-
-
-.build-main-button {
-
-    background:
-        linear-gradient(
-            #3498db,
-            #21618c
-        );
-}
-
-
-.save-button {
-
-    background:
-        linear-gradient(
-            #16a085,
-            #117864
-        );
-}
-
 
 .shop-button {
 
@@ -537,10 +455,7 @@ canvas {
     color: #222;
 
     text-shadow: none;
-
-    pointer-events: auto;
 }
-
 
 .main-button:active {
 
@@ -549,39 +464,6 @@ canvas {
 
     box-shadow:
         0 2px #111;
-}
-
-
-/* =========================================================
-   MODO
-========================================================= */
-
-#modeText {
-
-    position: absolute;
-
-    left: 50%;
-    top: 12px;
-
-    transform:
-        translateX(-50%);
-
-    padding:
-        7px 15px;
-
-    color: white;
-
-    background:
-        rgba(0,0,0,.65);
-
-    border:
-        2px solid rgba(255,255,255,.25);
-
-    border-radius: 20px;
-
-    font-weight: bold;
-
-    pointer-events: none;
 }
 
 
@@ -605,7 +487,6 @@ canvas {
 
     pointer-events: none;
 }
-
 
 .notification {
 
@@ -632,7 +513,6 @@ canvas {
         notification .3s ease;
 }
 
-
 @keyframes notification {
 
     from {
@@ -654,7 +534,7 @@ canvas {
 
 
 /* =========================================================
-   PANELES
+   MENÚ DE EDIFICIO
 ========================================================= */
 
 .panel {
@@ -663,21 +543,26 @@ canvas {
 
     left: 50%;
 
-    bottom: 82px;
+    /*
+       Más abajo que antes
+    */
+
+    bottom: 78px;
 
     transform:
         translateX(-50%);
 
+    /*
+       Más pequeño
+    */
+
     width:
         min(
-            320px,
+            300px,
             calc(100vw - 24px)
         );
 
-    max-height:
-        calc(100vh - 110px);
-
-    padding: 14px;
+    padding: 13px;
 
     text-align: center;
 
@@ -700,10 +585,10 @@ canvas {
     z-index: 60;
 
     pointer-events: auto;
-
-    overflow-y: auto;
 }
 
+
+/* X */
 
 .close {
 
@@ -732,194 +617,52 @@ canvas {
     z-index: 3;
 }
 
+#building-icon {
 
-.panel-heading {
+    font-size: 44px;
 
-    padding:
-        8px 30px 5px;
-
-    font-size: 20px;
-
-    font-weight: 900;
+    margin-bottom: 2px;
 }
 
+#building-name {
 
-.panel-subtitle {
+    text-transform: uppercase;
 
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 
-    font-size: 12px;
-
-    color: #555;
+    font-size: 19px;
 }
 
-
-/* =========================================================
-   CONSTRUCCIÓN
-========================================================= */
-
-#buildingList {
+.building-stats {
 
     display: flex;
 
-    flex-direction: column;
+    justify-content: space-around;
 
-    gap: 7px;
-}
+    padding: 8px;
 
-
-.buildItem {
-
-    width: 100%;
-
-    min-height: 58px;
-
-    display: flex;
-
-    align-items: center;
-
-    gap: 10px;
-
-    padding: 7px;
-
-    text-align: left;
-
-    border:
-        2px solid #444;
-
-    border-radius: 9px;
-
-    background:
-        linear-gradient(
-            #d7d7d7,
-            #a7a7a7
-        );
-}
-
-
-.buildItem:active {
-
-    transform:
-        scale(.98);
-}
-
-
-.buildIcon {
-
-    width: 48px;
-    height: 48px;
-
-    display: grid;
-
-    place-items: center;
-
-    font-size: 30px;
+    margin-bottom: 7px;
 
     border-radius: 8px;
 
     background:
-        #555;
-}
-
-
-.buildInfo {
-
-    flex: 1;
-}
-
-
-.buildInfo strong {
-
-    display: block;
-
-    font-size: 14px;
-}
-
-
-.buildInfo small {
-
-    display: block;
-
-    margin-top: 4px;
-
-    font-size: 11px;
-
-    font-weight: bold;
-}
-
-
-/* =========================================================
-   SELECCIÓN
-========================================================= */
-
-.selection-icon {
-
-    margin-top: 5px;
-
-    font-size: 50px;
-}
-
-
-.selection-panel h2 {
-
-    margin:
-        3px 0 5px;
-}
-
-
-.selection-level {
-
-    margin-bottom: 8px;
-
-    font-weight: bold;
-
-    color: #555;
-}
-
-
-.health-container {
-
-    width: 100%;
-
-    height: 9px;
-
-    overflow: hidden;
-
-    border-radius: 10px;
-
-    background:
-        #333;
-}
-
-
-.health-bar {
-
-    width: 100%;
-
-    height: 100%;
-
-    background:
-        #2ecc71;
-
-    transition:
-        width .2s;
-}
-
-
-.selection-info {
-
-    margin:
-        7px 0;
+        #aaa;
 
     font-size: 13px;
+}
+
+.upgrade-cost {
+
+    min-height: 16px;
+
+    margin-bottom: 3px;
+
+    color: #333;
+
+    font-size: 12px;
 
     font-weight: bold;
 }
-
-
-/* =========================================================
-   BOTONES
-========================================================= */
 
 .green-button,
 .blue-button,
@@ -940,7 +683,6 @@ canvas {
     font-size: 14px;
 }
 
-
 .green-button {
 
     background:
@@ -950,7 +692,6 @@ canvas {
         );
 }
 
-
 .blue-button {
 
     background:
@@ -959,7 +700,6 @@ canvas {
             #21618c
         );
 }
-
 
 .red-button {
 
@@ -972,10 +712,10 @@ canvas {
 
 
 /* =========================================================
-   COLOCACIÓN
+   CONTROLES CONSTRUCCIÓN
 ========================================================= */
 
-.placement-controls {
+#build-controls {
 
     position: absolute;
 
@@ -1011,8 +751,7 @@ canvas {
     pointer-events: auto;
 }
 
-
-.placement-button {
+.build-action {
 
     min-width: 125px;
 
@@ -1031,8 +770,7 @@ canvas {
         2px solid #222;
 }
 
-
-.placement-button.cancel {
+.build-action.cancel {
 
     background:
         linear-gradient(
@@ -1041,8 +779,7 @@ canvas {
         );
 }
 
-
-.placement-button.confirm {
+.build-action.confirm {
 
     background:
         linear-gradient(
@@ -1051,8 +788,7 @@ canvas {
         );
 }
 
-
-.placement-hint {
+#build-hint {
 
     max-width: 220px;
 
@@ -1092,7 +828,7 @@ canvas {
 
 
 /* =========================================================
-   TIENDA / GRANDES PANELES
+   TIENDA
 ========================================================= */
 
 .large-panel {
@@ -1125,10 +861,7 @@ canvas {
 
     box-shadow:
         0 20px 60px #000;
-
-    overflow: hidden;
 }
-
 
 .panel-title {
 
@@ -1147,8 +880,10 @@ canvas {
             #555,
             #222
         );
-}
 
+    border-radius:
+        9px 9px 0 0;
+}
 
 .tabs {
 
@@ -1161,7 +896,6 @@ canvas {
     background:
         #777;
 }
-
 
 .tab {
 
@@ -1180,13 +914,11 @@ canvas {
     font-weight: bold;
 }
 
-
 .tab.active {
 
     background:
         #2ecc71;
 }
-
 
 .shop-grid {
 
@@ -1207,9 +939,12 @@ canvas {
     overflow-y: auto;
 
     background:
+        linear-gradient(
+            rgba(255,255,255,.1),
+            rgba(0,0,0,.1)
+        ),
         #656565;
 }
-
 
 .shop-card {
 
@@ -1242,18 +977,15 @@ canvas {
         0 5px 8px #222;
 }
 
-
 .shop-card .icon {
 
     font-size: 50px;
 }
 
-
 .shop-card h3 {
 
     color: #111;
 }
-
 
 .shop-card p {
 
@@ -1261,7 +993,6 @@ canvas {
 
     font-weight: bold;
 }
-
 
 .price {
 
@@ -1275,23 +1006,6 @@ canvas {
         #222;
 
     border-radius: 6px;
-
-    font-weight: bold;
-}
-
-
-.shop-buy {
-
-    width: 100%;
-
-    padding: 8px;
-
-    border-radius: 7px;
-
-    color: white;
-
-    background:
-        #27ae60;
 
     font-weight: bold;
 }
@@ -1312,7 +1026,6 @@ canvas {
 
     font-size: 17px;
 }
-
 
 .army-grid {
 
@@ -1335,7 +1048,6 @@ canvas {
     background:
         #555;
 }
-
 
 .troop-card {
 
@@ -1360,26 +1072,15 @@ canvas {
         0 5px 8px #222;
 }
 
-
 .troop-icon {
 
     font-size: 50px;
 }
 
-
 .troop-card h3 {
 
     margin: 4px;
 }
-
-
-.troop-card p {
-
-    font-size: 11px;
-
-    font-weight: bold;
-}
-
 
 .train-button {
 
@@ -1395,12 +1096,6 @@ canvas {
         #27ae60;
 
     font-weight: bold;
-}
-
-
-.train-button:disabled {
-
-    opacity: .5;
 }
 
 
@@ -1437,13 +1132,11 @@ canvas {
         0 20px 60px #000;
 }
 
-
 .attack-panel .panel-title {
 
     margin:
         -24px -24px 0;
 }
-
 
 .enemy-preview {
 
@@ -1464,12 +1157,10 @@ canvas {
         rgba(0,0,0,.3);
 }
 
-
 .enemy-castle {
 
     font-size: 70px;
 }
-
 
 .attack-info {
 
@@ -1485,19 +1176,16 @@ canvas {
     border-radius: 10px;
 }
 
-
 .attack-info div {
 
     text-align: center;
 }
-
 
 .attack-info b,
 .attack-info small {
 
     display: block;
 }
-
 
 .find-button {
 
@@ -1530,7 +1218,7 @@ canvas {
    COMBATE
 ========================================================= */
 
-#battlePanel {
+#combat-ui {
 
     position: absolute;
 
@@ -1540,7 +1228,6 @@ canvas {
 
     pointer-events: none;
 }
-
 
 .combat-top {
 
@@ -1564,7 +1251,6 @@ canvas {
     color: white;
 }
 
-
 .combat-player {
 
     min-width: 170px;
@@ -1583,7 +1269,6 @@ canvas {
     border-radius: 10px;
 }
 
-
 .combat-player.enemy {
 
     background:
@@ -1593,19 +1278,16 @@ canvas {
         #e76f6f;
 }
 
-
 .combat-player span {
 
     font-size: 21px;
 }
-
 
 .combat-player b,
 .combat-player strong {
 
     display: block;
 }
-
 
 .combat-timer {
 
@@ -1627,7 +1309,6 @@ canvas {
 
     font-weight: 900;
 }
-
 
 #troop-bar {
 
@@ -1657,58 +1338,13 @@ canvas {
     pointer-events: auto;
 }
 
-
-.deploy-button {
-
-    min-width: 58px;
-    min-height: 55px;
-
-    position: relative;
-
-    border-radius: 9px;
-
-    color: white;
-
-    background:
-        #444;
-
-    border:
-        2px solid #777;
-
-    font-size: 25px;
-}
-
-
-.deploy-button small {
+.surrender-button {
 
     position: absolute;
 
-    right: 2px;
-    bottom: 2px;
+    right: 17px;
 
-    padding:
-        1px 4px;
-
-    border-radius: 8px;
-
-    background:
-        #111;
-
-    font-size: 11px;
-}
-
-
-.deploy-button.active {
-
-    border-color:
-        #f1c40f;
-
-    box-shadow:
-        0 0 10px #f1c40f;
-}
-
-
-.surrender-button {
+    bottom: 17px;
 
     padding: 11px;
 
@@ -1720,31 +1356,6 @@ canvas {
     border-radius: 8px;
 
     pointer-events: auto;
-}
-
-
-.battle-info {
-
-    position: absolute;
-
-    left: 50%;
-
-    bottom: 85px;
-
-    transform:
-        translateX(-50%);
-
-    padding:
-        6px 15px;
-
-    color: white;
-
-    background:
-        rgba(0,0,0,.7);
-
-    border-radius: 15px;
-
-    font-weight: bold;
 }
 
 
@@ -1781,28 +1392,17 @@ canvas {
         0 20px 60px #000;
 }
 
-
-#resultIcon {
+#result-icon {
 
     font-size: 65px;
 }
 
-
-#resultTitle {
+#result-title {
 
     margin: 8px;
 
     font-size: 32px;
 }
-
-
-#resultDescription {
-
-    margin-bottom: 10px;
-
-    color: #444;
-}
-
 
 .result-stars {
 
@@ -1810,7 +1410,6 @@ canvas {
 
     font-size: 28px;
 }
-
 
 .result-stats {
 
@@ -1828,7 +1427,6 @@ canvas {
     border-radius: 10px;
 }
 
-
 .result-stats div {
 
     display: flex;
@@ -1836,67 +1434,14 @@ canvas {
     flex-direction: column;
 }
 
-
 .result-stats span {
 
     font-size: 23px;
 }
 
-
 .result-stats small {
 
     font-weight: bold;
-}
-
-
-/* =========================================================
-   TOAST
-========================================================= */
-
-#toast {
-
-    position: absolute;
-
-    left: 50%;
-
-    top: 20%;
-
-    transform:
-        translate(-50%, -15px);
-
-    padding:
-        10px 18px;
-
-    color: white;
-
-    background:
-        rgba(20,20,20,.9);
-
-    border:
-        2px solid #f1c40f;
-
-    border-radius: 20px;
-
-    font-weight: bold;
-
-    opacity: 0;
-
-    pointer-events: none;
-
-    transition:
-        opacity .2s,
-        transform .2s;
-
-    z-index: 100;
-}
-
-
-#toast.show {
-
-    opacity: 1;
-
-    transform:
-        translate(-50%, 0);
 }
 
 
@@ -1910,15 +1455,13 @@ canvas {
 
         min-height: 53px;
 
-        min-width: 78px;
+        min-width: 88px;
     }
-
 
     .main-button span {
 
         font-size: 20px;
     }
-
 
     .resource {
 
@@ -1929,13 +1472,11 @@ canvas {
         font-size: 12px;
     }
 
-
     .resource b {
 
         width: 28px;
         height: 28px;
     }
-
 
     .panel {
 
@@ -1950,20 +1491,17 @@ canvas {
         padding: 10px;
     }
 
-
     .large-panel {
 
         height: 92vh;
     }
 
-
-    .placement-controls {
+    #build-controls {
 
         bottom: 8px;
     }
 
-
-    .placement-button {
+    .build-action {
 
         min-width: 105px;
 
@@ -1971,58 +1509,21 @@ canvas {
             9px 10px;
     }
 
-
-    .placement-hint {
+    #build-hint {
 
         display: none;
-    }
-
-
-    .combat-player {
-
-        min-width: 130px;
-
-        padding: 5px;
-    }
-}
-
-
-@media (max-width: 900px) {
-
-    #bottom-left {
-
-        gap: 5px;
-    }
-
-
-    .main-button {
-
-        min-width: 76px;
-    }
-
-
-    .main-button b {
-
-        font-size: 9px;
-    }
-
-
-    .combat-top {
-
-        width: 96%;
     }
 }
 
 
 @media (max-width: 700px) {
 
-    .placement-controls {
+    #build-controls {
 
         gap: 5px;
     }
 
-
-    .placement-button {
+    .build-action {
 
         min-width: 100px;
 
@@ -2032,14 +1533,12 @@ canvas {
             10px 8px;
     }
 
-
-    .placement-hint {
+    #build-hint {
 
         max-width: 140px;
 
         font-size: 10px;
     }
-
 
     .player-panel {
 
@@ -2050,37 +1549,8 @@ canvas {
             top left;
     }
 
-
     .hud-button {
 
         left: 165px;
     }
-
-
-    .main-button {
-
-        min-width: 65px;
-    }
-
-
-    .main-button span {
-
-        font-size: 20px;
-    }
-
-
-    .combat-player {
-
-        min-width: 90px;
-
-        font-size: 10px;
-    }
-
-
-    .combat-timer {
-
-        font-size: 15px;
-
-        padding: 6px 8px;
-    }
-             }
+}
