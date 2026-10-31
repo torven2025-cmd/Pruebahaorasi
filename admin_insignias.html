@@ -1,0 +1,97 @@
+<!doctype html><html lang=es><head><meta charset=utf-8><meta name=viewport content="width=device-width,initial-scale=1"><title>Clan Clash · Admin de insignias</title>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&display=swap" rel=stylesheet>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<style>
+:root{--bg:#12161f;--pn:#1c2230;--pn2:#252d40;--tx:#e8ecf5;--mu:#8e99b0;--ac:#4f8cff;--ok:#3ecf72;--er:#f0584a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.4 system-ui,Arial,sans-serif}
+h1,h2{font-family:'Lilita One',Arial,sans-serif;font-weight:400;margin:0 0 10px}h1{font-size:26px}h2{font-size:20px}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}.pn{background:var(--pn);border-radius:12px;padding:14px;margin-bottom:14px}
+input,select,textarea,button{font:inherit;color:var(--tx);background:var(--pn2);border:1px solid #3a4560;border-radius:8px;padding:8px 10px}
+input[type=color]{padding:2px;height:38px;width:56px}button{cursor:pointer;background:var(--ac);border-color:var(--ac);font-weight:600}
+button.g{background:var(--pn2);border-color:#3a4560}button.d{background:var(--er);border-color:var(--er)}button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:0 1 auto}.grow{flex:1 1 160px!important}
+label{display:block;font-size:12px;color:var(--mu);margin:8px 0 3px}.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
+.card{background:var(--pn2);border-radius:10px;padding:10px;display:flex;gap:10px;align-items:center;cursor:pointer;border:2px solid transparent}.card.sel{border-color:var(--ac)}
+.card small{color:var(--mu);display:block}.msg{min-height:20px;margin-top:6px}.msg.e{color:var(--er)}.msg.o{color:var(--ok)}
+.pl{display:flex;gap:10px;align-items:center;padding:8px;border-radius:8px;background:var(--pn2);margin-bottom:6px;flex-wrap:wrap}.pl>div:first-child{flex:1 1 200px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:#0003;border-radius:20px;padding:2px 4px 2px 2px;margin:2px}.chip button{padding:0 7px;background:none;border:0;color:var(--er);font-size:18px;line-height:1}
+.pv{display:flex;gap:16px;align-items:center;justify-content:center;padding:18px;background:#0004;border-radius:10px;min-height:120px}
+.hide{display:none}
+/* --- insignias --- */
+.bdg{position:relative;display:inline-block;flex:none;width:var(--s,64px);height:var(--s,64px);vertical-align:middle}
+.bdg .ring{position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 0deg,var(--c1),var(--c2),var(--c1));box-shadow:0 2px 0 #0006}
+.bdg .core{position:absolute;inset:calc(var(--s,64px)*.09);border-radius:50%;background:radial-gradient(circle at 35% 28%,var(--c2),var(--c1) 78%);display:flex;align-items:center;justify-content:center;overflow:hidden;box-shadow:inset 0 2px 4px #fff8,inset 0 -4px 6px #0005}
+.bdg .core b{font-family:'Lilita One',Arial,sans-serif;font-weight:400;font-size:calc(var(--s,64px)*.5);color:#fff;line-height:1;text-shadow:0 2px 0 #0007,0 0 8px #fff9}
+.bdg em{position:absolute;inset:0;border-radius:50%;overflow:hidden;pointer-events:none;display:none}
+.bdg u{position:absolute;text-decoration:none;color:#fff;font-size:calc(var(--s,64px)*.26);pointer-events:none;display:none;text-shadow:0 0 6px #fff,0 0 10px var(--c2)}
+.bdg.r-common .ring{background:linear-gradient(#cfd5e0,#8e97a8)}.bdg.r-common .core{background:radial-gradient(circle at 35% 28%,#e9edf4,#a3adc0 80%)}
+.bdg.r-rare .ring{box-shadow:0 0 calc(var(--s,64px)*.16) var(--c2),0 2px 0 #0006}
+.bdg.r-epic .ring{box-shadow:0 0 calc(var(--s,64px)*.22) var(--c2),0 2px 0 #0006}
+.bdg.r-epic em,.bdg.r-legendary em,.bdg.r-mythic em{display:block}
+.bdg em::after{content:'';position:absolute;top:-20%;bottom:-20%;width:34%;left:-60%;background:linear-gradient(100deg,#fff0,#fffc,#fff0);transform:skewX(-18deg);animation:bdgSh 2.6s ease-in-out infinite}
+@keyframes bdgSh{0%,55%{left:-60%}100%{left:130%}}
+.bdg.r-legendary .ring{animation:bdgSpin 7s linear infinite,bdgGlow 2.2s ease-in-out infinite;--gl:#ffd24a}
+.bdg.r-legendary u.a,.bdg.r-legendary u.b{display:block}
+.bdg.r-mythic .ring{background:conic-gradient(from 0deg,#ff3d6e,#ffb02e,#fff35c,#4dff88,#3df0ff,#5a7bff,#c64dff,#ff3d6e);animation:bdgSpin 3.2s linear infinite,bdgGlow 1.6s ease-in-out infinite;--gl:var(--c1)}
+.bdg.r-mythic{filter:drop-shadow(0 0 calc(var(--s,64px)*.12) var(--c1)) drop-shadow(0 0 calc(var(--s,64px)*.25) var(--c2))}
+.bdg.r-mythic::before{content:'';position:absolute;inset:-24%;border-radius:50%;background:repeating-conic-gradient(from 0deg,#fff0 0 9deg,#ffffffaa 9deg 11deg,#fff0 11deg 20deg);-webkit-mask:radial-gradient(circle,#0000 52%,#000 58%,#0000 74%);mask:radial-gradient(circle,#0000 52%,#000 58%,#0000 74%);animation:bdgSpin 9s linear infinite reverse;opacity:.85}
+.bdg.r-mythic .core{background:radial-gradient(circle at 32% 26%,#fff 0,var(--c2) 22%,var(--c1) 70%,#3a0a5a 100%);animation:bdgHue 5s linear infinite}
+.bdg.r-mythic .core b{background:linear-gradient(180deg,#fff,#ffe27a 55%,#ff9a3c);-webkit-background-clip:text;background-clip:text;color:transparent;-webkit-text-stroke:calc(var(--s,64px)*.02) #5a1a7a;text-shadow:none;filter:drop-shadow(0 0 4px #fff)}
+.bdg.r-mythic u{display:block}
+.bdg u.a{left:-6%;top:6%;animation:bdgTw 1.8s ease-in-out infinite}.bdg u.b{right:-4%;top:18%;animation:bdgTw 1.8s ease-in-out .6s infinite}
+.bdg u.c{left:8%;bottom:-6%;animation:bdgTw 1.8s ease-in-out 1.1s infinite}.bdg u.d{right:4%;bottom:-8%;animation:bdgTw 1.8s ease-in-out .3s infinite}
+@keyframes bdgSpin{to{transform:rotate(360deg)}}
+@keyframes bdgGlow{0%,100%{box-shadow:0 0 calc(var(--s,64px)*.1) var(--gl),0 2px 0 #0006}50%{box-shadow:0 0 calc(var(--s,64px)*.34) var(--gl),0 2px 0 #0006}}
+@keyframes bdgHue{0%,100%{filter:hue-rotate(0deg)}50%{filter:hue-rotate(40deg)}}
+@keyframes bdgTw{0%,100%{transform:scale(.2) rotate(0);opacity:0}50%{transform:scale(1.15) rotate(45deg);opacity:1}}
+@media (prefers-reduced-motion:reduce){.bdg *,.bdg::before{animation:none!important}}
+
+</style></head><body><div class=wrap>
+<h1>Clan Clash · Admin de insignias</h1>
+<div id=login class=pn><h2>Iniciar sesión</h2><div class=row><input id=u class=grow placeholder="Usuario" autocomplete=username><input id=p class=grow type=password placeholder="Contraseña" autocomplete=current-password><button id=bl>Entrar</button></div><div id=lm class=msg></div></div>
+<div id=app class=hide>
+<div class=pn><div class=row><b id=who class=grow></b><button class=g id=bo>Salir</button></div></div>
+<div class=pn><h2>Insignias</h2><div id=bl2 class=grid></div></div>
+<div class=pn><h2 id=et>Nueva insignia</h2>
+ <div class=row><div class=grow><label>ID (sin espacios, no se puede cambiar)</label><input id=eid style="width:100%" placeholder="ej. veterano"></div><div class=grow><label>Nombre</label><input id=enm style="width:100%"></div></div>
+ <div class=row><div><label>Rareza</label><select id=era><option value=common>Común</option><option value=rare>Rara</option><option value=epic>Épica</option><option value=legendary>Legendaria</option><option value=mythic>Mítica</option></select></div>
+ <div><label>Icono (emoji o letra)</label><input id=eic style="width:90px" maxlength=4 value="⭐"></div><div><label>Color 1</label><input type=color id=ec1 value="#6aa8ff"></div><div><label>Color 2</label><input type=color id=ec2 value="#2b57c4"></div></div>
+ <label>Descripción</label><input id=eds style="width:100%">
+ <label>Vista previa</label><div class=pv id=pv></div>
+ <div class=row style="margin-top:10px"><button id=bs>Guardar insignia</button><button class=g id=bn>Nueva</button><button class=d id=bd>Eliminar</button></div><div id=em class=msg></div></div>
+<div class=pn><h2>Jugadores</h2><div class=row><input id=q class=grow placeholder="Buscar por nombre o #ID (vacío = primeros 40)"><button id=bq>Buscar</button></div>
+ <div class=row style="margin-top:8px"><label style="margin:0">Insignia a otorgar:</label><select id=gb class=grow></select></div><div id=pm class=msg></div><div id=pl style="margin-top:8px"></div></div>
+</div></div>
+<script>
+const sb=window.supabase.createClient("https://agezfxgwxnomkffemgqm.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFnZXpmeGd3eG5vbWtmZmVtZ3FtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTIyOTg5MjEsImV4cCI6MjEwNzg3NDkyMX0.X9AmQAapuJ91LkJJ0AwgciYThgxpz9WfuL7oJQb3WJg");
+const $=i=>document.getElementById(i);const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function badgeHTML(b,s){const r=b.rarity||'common';return `<div class="bdg r-${r}" style="--s:${s||64}px;--c1:${esc(b.c1||'#8aa4ff')};--c2:${esc(b.c2||'#3b5bdb')}"><i class=ring></i><i class=core><b>${esc(b.icon||'⭐')}</b></i><em></em><u class=a>✦</u><u class=b>✦</u><u class=c>✦</u><u class=d>✦</u></div>`}
+const RN={common:'Común',rare:'Rara',epic:'Épica',legendary:'Legendaria',mythic:'Mítica'};
+let B=[],sel=null,PL=[];
+function msg(id,t,k){const e=$(id);e.textContent=t||'';e.className='msg '+(k||'')}
+const errT=e=>/no autorizado/i.test(e.message||'')?'Esta cuenta no es administradora.':(e.message||String(e));
+async function login(){msg('lm','Entrando…');const u=$('u').value.trim().toLowerCase(),p=$('p').value;
+ const r=await sb.auth.signInWithPassword({email:u+'@clanclash.game',password:p});if(r.error)return msg('lm','Usuario o contraseña incorrectos','e');
+ if(!await load())return;$('login').classList.add('hide');$('app').classList.remove('hide');$('who').textContent='Sesión: '+u}
+async function load(){const r=await sb.rpc('admin_badges');if(r.error){msg('lm',errT(r.error),'e');await sb.auth.signOut();return false}B=r.data||[];drawB();return true}
+function drawB(){$('bl2').innerHTML=B.map(b=>`<div class="card${sel==b.id?' sel':''}" data-id="${esc(b.id)}">${badgeHTML(b,52)}<div><b>${esc(b.name)}</b><small>${RN[b.rarity]||b.rarity} · ${b.owners} jugador(es)</small></div></div>`).join('')||'<small>No hay insignias.</small>';
+ $('gb').innerHTML=B.map(b=>`<option value="${esc(b.id)}">${esc(b.name)} (${RN[b.rarity]})</option>`).join('');prev()}
+function prev(){$('pv').innerHTML=['rare','epic','legendary','mythic','common'].includes($('era').value)?badgeHTML({rarity:$('era').value,icon:$('eic').value,c1:$('ec1').value,c2:$('ec2').value},96)+badgeHTML({rarity:$('era').value,icon:$('eic').value,c1:$('ec1').value,c2:$('ec2').value},48):''}
+function fill(b){sel=b?b.id:null;$('et').textContent=b?'Editar insignia':'Nueva insignia';$('eid').value=b?b.id:'';$('eid').disabled=!!b;$('enm').value=b?b.name:'';$('era').value=b?b.rarity:'common';$('eic').value=b?b.icon:'⭐';$('ec1').value=b?b.c1:'#6aa8ff';$('ec2').value=b?b.c2:'#2b57c4';$('eds').value=b?b.descr||'':'';$('bd').classList.toggle('hide',!b);msg('em');drawB()}
+$('bl2').onclick=e=>{const c=e.target.closest('.card');if(c)fill(B.find(b=>b.id==c.dataset.id))};
+['era','eic','ec1','ec2'].forEach(i=>$(i).oninput=prev);
+async function save(){const id=$('eid').value.trim().toLowerCase().replace(/[^a-z0-9_]/g,'');if(!id)return msg('em','Escribe un ID (letras, números o _)','e');const n=$('enm').value.trim();if(!n)return msg('em','Escribe un nombre','e');
+ const r=await sb.rpc('admin_badge_save',{p_id:id,p_name:n,p_rarity:$('era').value,p_icon:$('eic').value||'⭐',p_c1:$('ec1').value,p_c2:$('ec2').value,p_descr:$('eds').value});
+ if(r.error)return msg('em',errT(r.error),'e');await load();fill(B.find(b=>b.id==id));msg('em','Guardada ✔','o')}
+async function del(){const b=B.find(x=>x.id==sel);if(!b||!confirm(`¿Eliminar "${b.name}"? Se quitará a sus ${b.owners} dueño(s).`))return;
+ const r=await sb.rpc('admin_badge_delete',{p_id:b.id});if(r.error)return msg('em',errT(r.error),'e');await load();fill(null);msg('em','Eliminada','o')}
+async function find(){msg('pm','Buscando…');const r=await sb.rpc('admin_find_players',{p_q:$('q').value.trim()});if(r.error)return msg('pm',errT(r.error),'e');PL=r.data||[];msg('pm',PL.length+' jugador(es)');drawP()}
+function drawP(){$('pl').innerHTML=PL.map(p=>`<div class=pl><div><b>${esc(p.name)}</b> <small style="color:var(--mu)">#${esc(p.pid)} · nivel ${p.lvl} · ${p.trophies} 🏆</small><div>${(p.badges||[]).map(id=>{const b=B.find(x=>x.id==id);return b?`<span class=chip>${badgeHTML(b,28)}<small>${esc(b.name)}</small><button data-rv="${esc(id)}" data-p="${p.id}" title="Quitar">×</button></span>`:''}).join('')||'<small style="color:var(--mu)">Sin insignias</small>'}</div></div><button data-gr="${p.id}">+ Otorgar</button></div>`).join('')}
+$('pl').onclick=async e=>{const g=e.target.closest('[data-gr]'),r=e.target.closest('[data-rv]');let x;
+ if(g){const id=$('gb').value;if(!id)return;x=await sb.rpc('admin_badge_grant',{p_player:g.dataset.gr,p_badge:id})}
+ else if(r){x=await sb.rpc('admin_badge_revoke',{p_player:r.dataset.p,p_badge:r.dataset.rv})}else return;
+ if(x.error)return msg('pm',errT(x.error),'e');await find();await load();msg('pm','Hecho ✔','o')};
+$('bl').onclick=login;$('p').onkeydown=e=>{if(e.key=='Enter')login()};$('bs').onclick=save;$('bn').onclick=()=>fill(null);$('bd').onclick=del;$('bq').onclick=find;$('q').onkeydown=e=>{if(e.key=='Enter')find()};
+$('bo').onclick=async()=>{await sb.auth.signOut();location.reload()};
+fill(null);
+</script></body></html>
